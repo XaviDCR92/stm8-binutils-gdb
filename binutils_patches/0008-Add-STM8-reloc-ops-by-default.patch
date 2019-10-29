@@ -1,7 +1,7 @@
 From 1c7438a0330f4187e122e97b4592f9187cf49bcd Mon Sep 17 00:00:00 2001
 From: Xavier ASUS <xavi92psx@gmail.com>
 Date: Tue, 29 Oct 2019 01:15:40 +0100
-Subject: [PATCH 8/8] Add STM8 reloc ops by default
+Subject: [PATCH 8/10] Add STM8 reloc ops by default
 
 ---
  bfd/bfd-in2.h | 7 +++++++

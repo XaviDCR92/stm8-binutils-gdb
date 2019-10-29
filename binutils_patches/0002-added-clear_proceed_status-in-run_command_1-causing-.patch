@@ -1,7 +1,7 @@
 From 613571635409f08c9eb0460e011616dd16250ecb Mon Sep 17 00:00:00 2001
 From: =?UTF-8?q?=C3=85ke=20Rehnman?= <ake_rehnman_at_gmail_com>
 Date: Sat, 4 Mar 2017 00:06:10 +0100
-Subject: [PATCH 2/8] added clear_proceed_status in run_command_1 causing run
+Subject: [PATCH 2/10] added clear_proceed_status in run_command_1 causing run
  command to hang.
 
 ---
@@ -22,4 +22,3 @@ index 976276b694..2050634c29 100644
    /* Since there was no error, there's no need to finish the thread
 -- 
 2.12.2
-

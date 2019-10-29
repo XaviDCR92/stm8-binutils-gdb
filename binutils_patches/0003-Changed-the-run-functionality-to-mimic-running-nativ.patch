@@ -1,7 +1,7 @@
 From a98428b14d141be893403aa7c7935012aef1f8e5 Mon Sep 17 00:00:00 2001
 From: =?UTF-8?q?=C3=85ke=20Rehnman?= <ake_rehnman_at_gmail_com>
 Date: Sat, 4 Mar 2017 23:47:44 +0100
-Subject: [PATCH 3/8] Changed the run functionality to mimic running native
+Subject: [PATCH 3/10] Changed the run functionality to mimic running native
  code.
 
 In addition two new remote settings were added to facilitate debugging with
@@ -127,4 +127,3 @@ index a426508723..208bf4609b 100644
  Argument is a single section name (default: all loaded sections).\n\
 -- 
 2.12.2
-

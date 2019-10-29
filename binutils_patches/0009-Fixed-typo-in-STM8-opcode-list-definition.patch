@@ -1,0 +1,26 @@
+From 384f13a86da9f462b9a4dfb48407b48461d8a837 Mon Sep 17 00:00:00 2001
+From: Xavier ASUS <xavi92psx@gmail.com>
+Date: Tue, 29 Oct 2019 23:16:22 +0100
+Subject: [PATCH 9/10] Fixed typo in STM8 opcode list definition
+
+---
+ opcodes/stm8-opc.c | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/opcodes/stm8-opc.c b/opcodes/stm8-opc.c
+index d16e7b60..3a9397a1 100644
+--- a/opcodes/stm8-opc.c
++++ b/opcodes/stm8-opc.c
+@@ -240,8 +240,8 @@ const struct stm8_opcodes_s stm8_opcodes[] =
+ {"cpl", {ST8_LONGPTRW_X}, 0x7263},
+ {"cpl", {ST8_SHORTPTRW_Y}, 0x9163},
+ //cplw
+-{"clrw", {ST8_REG_X}, 0x53},
+-{"clrw", {ST8_REG_Y}, 0x9053},
++{"cplw", {ST8_REG_X}, 0x53},
++{"cplw", {ST8_REG_Y}, 0x9053},
+ //dec
+ {"dec", {ST8_REG_A}, 0x4A},
+ {"dec", {ST8_SHORTMEM}, 0x3A},
+-- 
+2.17.1

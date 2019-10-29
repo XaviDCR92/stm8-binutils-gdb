@@ -1,0 +1,44 @@
+From cc54a1037caf9f5ab4b5cd5795f1d5b7e2ceb68d Mon Sep 17 00:00:00 2001
+From: Xavier ASUS <xavi92psx@gmail.com>
+Date: Tue, 29 Oct 2019 23:16:48 +0100
+Subject: [PATCH 10/10] Replaced C99 code with ANSI C equivalent
+
+---
+ opcodes/stm8-dis.c | 7 +++++--
+ 1 file changed, 5 insertions(+), 2 deletions(-)
+
+diff --git a/opcodes/stm8-dis.c b/opcodes/stm8-dis.c
+index 906b8370..d1969f44 100644
+--- a/opcodes/stm8-dis.c
++++ b/opcodes/stm8-dis.c
+@@ -379,6 +379,8 @@ int stm8_dis(bfd_vma addr, unsigned int op)
+ 	{
+ 		if (op == stm8_opcodes[i].bin_opcode)
+ 		{
++			int curr_operand;
++
+ 			dinfo->fprintf_func(dinfo->stream, "%s",stm8_opcodes[i].name);
+ 			operandlen = stm8_compute_insn_size(stm8_opcodes[i])-stm8_opcode_size(op);
+ 			instrlen += operandlen;
+@@ -388,8 +390,9 @@ int stm8_dis(bfd_vma addr, unsigned int op)
+ 			lastlabeladdr = 0;
+ 			c = ' ';
+ 
+-			for (int curr_operand = 0; curr_operand < stm8_num_opcode_operands(stm8_opcodes[i]); curr_operand++)
++			for (curr_operand = 0; curr_operand < stm8_num_opcode_operands(stm8_opcodes[i]); curr_operand++)
+ 			{
++				int j;
+ 				bufp = buf;
+ 				dir = 1;
+ 				operand = 0;
+@@ -401,7 +404,7 @@ int stm8_dis(bfd_vma addr, unsigned int op)
+ 					operand = stm8_num_opcode_operands(stm8_opcodes[i]) - 1;
+ 				}
+ 
+-				for (int j = 0; j < stm8_num_opcode_operands(stm8_opcodes[i]); j++, operand += dir)
++				for (j = 0; j < stm8_num_opcode_operands(stm8_opcodes[i]); j++, operand += dir)
+ 				{
+ 					s[0] = 0;
+ 					bufp += stm8_operands(s, bufp, stm8_opcodes[i].constraints[operand]);
+-- 
+2.17.1

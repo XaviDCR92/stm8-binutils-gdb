@@ -1,7 +1,7 @@
 From 69776a7af5b7a3697c5d32f3265d2a8de8cb5b32 Mon Sep 17 00:00:00 2001
 From: Xavier ASUS <xavi92psx@gmail.com>
 Date: Tue, 29 Oct 2019 00:43:05 +0100
-Subject: [PATCH 7/8] Added --gc-sections and hi8/lo8/hh8
+Subject: [PATCH 7/10] Added --gc-sections and hi8/lo8/hh8
 
 ---
  bfd/elf32-stm8.c      | 229 ++++++++++++++++++++++++----
