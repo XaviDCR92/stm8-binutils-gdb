@@ -1,0 +1,174 @@
+From c5d6641a345485cab823426a5b364a8126e7eda3 Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?=C3=85ke=20Rehnman?= <ake_rehnman_at_gmail_com>
+Date: Sun, 23 Apr 2017 21:30:18 +0200
+Subject: [PATCH 5/6] Fixed printf formatting warnings Removed target
+ description registers
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Signed-off-by: Åke Rehnman <ake_rehnman_at_gmail_com>
+---
+ gdb/stm8-tdep.c | 38 ++++++++++++++++++++------------------
+ 1 file changed, 20 insertions(+), 18 deletions(-)
+
+diff --git a/gdb/stm8-tdep.c b/gdb/stm8-tdep.c
+index 30b345cfd7..fd4b96c6c0 100644
+--- a/gdb/stm8-tdep.c
++++ b/gdb/stm8-tdep.c
+@@ -34,7 +34,6 @@
+ #include "dis-asm.h"
+ #include "objfiles.h"
+ #include "target-descriptions.h"
+-#include <algorithm>
+ #include "dwarf2-frame.h"
+ 
+ enum stm8_regnum
+@@ -279,7 +278,7 @@ stm8_breakpoint_kind_from_pc (struct gdbarch *gdbarch, CORE_ADDR *pcptr)
+ 	CORE_ADDR pc = *pcptr;
+ 
+ 	if (stm8_debug)
+-		fprintf_unfiltered (gdb_stdlog, "stm8_breakpoint_kind_from_pc called %8.8lx\n",pc);
++		fprintf_unfiltered (gdb_stdlog, "stm8_breakpoint_kind_from_pc called %8.8lx\n", (unsigned long)pc);
+ 
+ 	return 1;
+ }
+@@ -336,19 +335,19 @@ stm8_unwind_pc (struct gdbarch *gdbarch, struct frame_info *next_frame)
+ 	frame_unwind_register (next_frame, STM8_PC_REGNUM, buf);
+ 	pc = extract_typed_address (buf, builtin_type (gdbarch)->builtin_func_ptr);
+ 	if (stm8_debug)
+-		fprintf_unfiltered (gdb_stdlog, "stm8_unwind_pc called: pc=%8.8lx\n",pc);
++		fprintf_unfiltered (gdb_stdlog, "stm8_unwind_pc called: pc=%8.8lx\n", (unsigned long)pc);
+ 	return pc;
+ }
+ 
+ static CORE_ADDR
+ stm8_unwind_sp (struct gdbarch *gdbarch, struct frame_info *next_frame)
+ {
+-	ULONGEST sp;
++	CORE_ADDR sp;
+ 
+ 	sp = frame_unwind_register_unsigned (next_frame, STM8_SP_REGNUM);
+ 	sp = gdbarch_addr_bits_remove (gdbarch, sp);
+ 	if (stm8_debug)
+-		fprintf_unfiltered (gdb_stdlog, "stm8_unwind_sp called: sp=%8.8llx\n",sp);
++		fprintf_unfiltered (gdb_stdlog, "stm8_unwind_sp called: sp=%8.8lx\n", (unsigned long)sp);
+ 	return sp;
+ }
+ 
+@@ -451,7 +450,7 @@ stm8_get_return_insn (CORE_ADDR pc)
+ 
+ 	//defaut to RET
+ 	if (stm8_debug)
+-		fprintf_unfiltered(gdb_stdlog, "WARNING: stm8_get_return_insn: No return instruction found in function %s start_addr = %8.8lx end_addr = %8.8lx\n", name, func_addr, func_end);
++		fprintf_unfiltered(gdb_stdlog, "WARNING: stm8_get_return_insn: No return instruction found in function %s start_addr = %8.8lx end_addr = %8.8lx\n", name, (unsigned long)func_addr, (unsigned long)func_end);
+ 	return RETURN_RET;
+ }
+ 
+@@ -468,7 +467,7 @@ stm8_analyze_prologue (struct gdbarch *gdbarch, CORE_ADDR pc,
+ 	gdb_byte buf[4];
+ 
+ 	if (stm8_debug)
+-		fprintf_unfiltered(gdb_stdlog, "stm8_analyze_prologue called (pc=%8.8lx current_pc=%8.8lx)\n",pc,current_pc);
++		fprintf_unfiltered(gdb_stdlog, "stm8_analyze_prologue called (pc=%8.8lx current_pc=%8.8lx)\n", (unsigned long)pc, (unsigned long)current_pc);
+ 
+ 	/* Initialize info about frame.  */
+ 	cache->framesize = 0;
+@@ -582,7 +581,7 @@ static CORE_ADDR
+ stm8_skip_prologue (struct gdbarch *gdbarch, CORE_ADDR start_pc)
+ {
+ 	if (stm8_debug)
+-		fprintf_unfiltered (gdb_stdlog, "stm8_skip_prologue called: start_pc=%8.8lx\n", start_pc);
++		fprintf_unfiltered (gdb_stdlog, "stm8_skip_prologue called: start_pc=%8.8lx\n", (unsigned long)start_pc);
+ 
+ 	struct symtab_and_line sal;
+ 	CORE_ADDR func_start, func_end, ostart_pc;
+@@ -605,7 +604,7 @@ stm8_skip_prologue (struct gdbarch *gdbarch, CORE_ADDR start_pc)
+ 			&cache);
+ 
+ 	if (stm8_debug)
+-		fprintf_unfiltered (gdb_stdlog, "stm8_skip_prologue: start_pc=%8.8lx ostart_pc=%8.8lx\n",start_pc,ostart_pc);
++		fprintf_unfiltered (gdb_stdlog, "stm8_skip_prologue: start_pc=%8.8lx ostart_pc=%8.8lx\n", (unsigned long)start_pc, (unsigned long)ostart_pc);
+ 
+ 	if (ostart_pc > start_pc)
+ 		return ostart_pc;
+@@ -629,7 +628,7 @@ static struct stm8_frame_cache *
+ stm8_frame_cache (struct frame_info *next_frame, void **this_cache)
+ {
+ 	if (stm8_debug)
+-		fprintf_unfiltered (gdb_stdlog, "stm8_frame_cache called (next_frame=%p)\n",next_frame);
++		fprintf_unfiltered (gdb_stdlog, "stm8_frame_cache called (next_frame=%p)\n", next_frame);
+ 
+ 	struct stm8_frame_cache *cache;
+ 	struct gdbarch *gdbarch = get_frame_arch (next_frame);
+@@ -712,7 +711,7 @@ stm8_frame_cache (struct frame_info *next_frame, void **this_cache)
+ 	if (stm8_debug)
+ 	{
+ 		fprintf_unfiltered (gdb_stdlog, "stm8_frame_cache: (next_frame=%p) base=%4.4lx curr_pc=%4.4lx curr_sp=%4.4lx fp_regnum=%d fp=%4.4lx framesize=%4.4x stackadj=%4.4x retsize=%d\n",
+-				next_frame, cache->base, current_pc, current_sp, cache->fp_regnum, fp, cache->framesize, cache->stackadj, retsize);
++				next_frame, (unsigned long)cache->base, (unsigned long)current_pc, (unsigned long)current_sp, cache->fp_regnum, (unsigned long)fp, cache->framesize, cache->stackadj, retsize);
+ 
+ 		CORE_ADDR frame_pc;
+ 		CORE_ADDR frame_sp;
+@@ -729,9 +728,9 @@ stm8_frame_cache (struct frame_info *next_frame, void **this_cache)
+ 			frame_fp = fp;
+ 
+ 		frame_pc = frame_pc >> 16;
+-		fprintf_unfiltered (gdb_stdlog, "stm8_frame_cache: (next_frame=%p) pc=%8.8llx *pc=%8.8lx\n", next_frame, cache->saved_regs[STM8_PC_REGNUM].addr, frame_pc);
+-		fprintf_unfiltered (gdb_stdlog, "stm8_frame_cache: (next_frame=%p) sp=%8.8llx *sp=%8.8lx\n", next_frame, cache->saved_regs[STM8_SP_REGNUM].addr, frame_sp);
+-		fprintf_unfiltered (gdb_stdlog, "stm8_frame_cache: (next_frame=%p) fp=%8.8llx *fp=%8.8lx\n", next_frame, cache->saved_regs[STM8_FP_REGNUM].addr, frame_fp);
++		fprintf_unfiltered (gdb_stdlog, "stm8_frame_cache: (next_frame=%p) pc=%8.8lx *pc=%8.8lx\n", next_frame, (unsigned long)cache->saved_regs[STM8_PC_REGNUM].addr, (unsigned long)frame_pc);
++		fprintf_unfiltered (gdb_stdlog, "stm8_frame_cache: (next_frame=%p) sp=%8.8lx *sp=%8.8lx\n", next_frame, (unsigned long)cache->saved_regs[STM8_SP_REGNUM].addr, (unsigned long)frame_sp);
++		fprintf_unfiltered (gdb_stdlog, "stm8_frame_cache: (next_frame=%p) fp=%8.8lx *fp=%8.8lx\n", next_frame, (unsigned long)cache->saved_regs[STM8_FP_REGNUM].addr, (unsigned long)frame_fp);
+ 	}
+ 
+ 	return (struct stm8_frame_cache *) (*this_cache);
+@@ -759,7 +758,7 @@ stm8_frame_this_id (struct frame_info *next_frame, void **this_cache,
+ 	(*this_id) = frame_id_build (base, func);
+ 
+ 	if (stm8_debug)
+-		fprintf_unfiltered (gdb_stdlog, "stm8_frame_this_id: base=%8.8lx pc=%8.8lx\n",base, func);
++		fprintf_unfiltered (gdb_stdlog, "stm8_frame_this_id: base=%8.8lx pc=%8.8lx\n", (unsigned long)base, (unsigned long)func);
+ }
+ 
+ static struct value *
+@@ -789,7 +788,7 @@ stm8_frame_prev_register (struct frame_info *this_frame,
+ 	}
+ 
+ 	if (stm8_debug)
+-		fprintf_unfiltered (gdb_stdlog, "stm8_frame_prev_register: regnum(%d)=%8.8llx\n", regnum, value_as_long(value));
++		fprintf_unfiltered (gdb_stdlog, "stm8_frame_prev_register: regnum(%d)=%8.8lx\n", regnum, (unsigned long)value_as_long(value));
+ 
+ 	return value;
+ }
+@@ -885,7 +884,7 @@ stm8_frame_base_address (struct frame_info *next_frame,
+ 			stm8_frame_cache (next_frame, this_cache);
+ 
+ 	if (stm8_debug)
+-		fprintf_unfiltered (gdb_stdlog, "stm8_frame_base_address: fb=%8.8lx\n", cache->base);
++		fprintf_unfiltered (gdb_stdlog, "stm8_frame_base_address: fb=%8.8lx\n", (unsigned long)cache->base);
+ 
+ 	return cache->base;
+ }
+@@ -906,7 +905,7 @@ stm8_frame_args_address (struct frame_info *this_frame, void **this_cache)
+ 		addr += 5; //2 bytes fp + 2 bytes pc + 1
+ 
+ 	if (stm8_debug)
+-		fprintf_unfiltered (gdb_stdlog, "stm8_frame_args_address: addr = %8.8lx\n",addr);
++		fprintf_unfiltered (gdb_stdlog, "stm8_frame_args_address: addr = %8.8lx\n", (unsigned long)addr);
+ 
+ 	return addr;
+ }
+@@ -966,6 +965,9 @@ stm8_gdbarch_init (struct gdbarch_info info, struct gdbarch_list *arches)
+   if (tdesc == NULL)
+     tdesc = tdesc_stm8;
+ 
++  //override target registers... /ARE
++   tdesc = tdesc_stm8;
++
+   /* Check any target description for validity.  */
+   if (tdesc_has_registers (tdesc))
+     {
+-- 
+2.12.2
+

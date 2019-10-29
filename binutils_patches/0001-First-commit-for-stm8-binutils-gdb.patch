@@ -1,0 +1,4893 @@
+From 22cbcafce0c08683209fe1bba2b7faef111764d4 Mon Sep 17 00:00:00 2001
+From: Ake Rehnman <ake_rehnman_at_gmail_com>
+Date: Fri, 24 Feb 2017 11:51:54 +0100
+Subject: [PATCH 1/6] First commit for stm8-binutils-gdb
+
+# Conflicts:
+#	bfd/archures.c
+#	bfd/bfd-in2.h
+#	bfd/libbfd.h
+#	bfd/reloc.c
+#	gas/configure.tgt
+#	gdb/configure.tgt
+---
+ bfd/Makefile.am            |   12 +-
+ bfd/Makefile.in            |   14 +-
+ bfd/archures.c             |    4 +
+ bfd/bfd-in2.h              |    5 +
+ bfd/config.bfd             |    6 +
+ bfd/configure              |    1 +
+ bfd/configure.ac           |    1 +
+ bfd/cpu-stm8.c             |   40 ++
+ bfd/cpu-stm8.h             |    6 +
+ bfd/elf32-stm8.c           |  285 +++++++++++
+ bfd/elfcode.h              |   22 +-
+ bfd/libbfd.h               |    1 +
+ bfd/reloc.c                |    5 +
+ bfd/targets.c              |    2 +
+ config.sub                 |    6 +-
+ gas/Makefile.am            |    6 +-
+ gas/Makefile.in            |   21 +-
+ gas/config/tc-stm8.c       | 1026 ++++++++++++++++++++++++++++++++++++++++
+ gas/config/tc-stm8.h       |   97 ++++
+ gas/configure.tgt          |    4 +-
+ gdb/configure.tgt          |    5 +
+ gdb/stm8-tdep.c            | 1130 ++++++++++++++++++++++++++++++++++++++++++++
+ include/dis-asm.h          |    1 +
+ include/elf/stm8.h         |   38 ++
+ include/opcode/stm8.h      |   82 ++++
+ ld/Makefile.am             |    7 +-
+ ld/Makefile.in             |    7 +-
+ ld/configure.tgt           |    2 +
+ ld/emulparams/elf32stm8.sh |   14 +
+ ld/scripttempl/elfstm8.sc  |  232 +++++++++
+ opcodes/Makefile.am        |    4 +-
+ opcodes/Makefile.in        |    6 +-
+ opcodes/configure          |    1 +
+ opcodes/configure.ac       |    1 +
+ opcodes/disassemble.c      |    6 +
+ opcodes/stm8-dis.c         |  412 ++++++++++++++++
+ opcodes/stm8-opc.c         |  799 +++++++++++++++++++++++++++++++
+ 37 files changed, 4286 insertions(+), 25 deletions(-)
+ create mode 100644 bfd/cpu-stm8.c
+ create mode 100644 bfd/cpu-stm8.h
+ create mode 100644 bfd/elf32-stm8.c
+ create mode 100644 gas/config/tc-stm8.c
+ create mode 100644 gas/config/tc-stm8.h
+ create mode 100644 gdb/stm8-tdep.c
+ create mode 100644 include/elf/stm8.h
+ create mode 100644 include/opcode/stm8.h
+ create mode 100644 ld/emulparams/elf32stm8.sh
+ create mode 100644 ld/scripttempl/elfstm8.sc
+ create mode 100644 opcodes/stm8-dis.c
+ create mode 100644 opcodes/stm8-opc.c
+
+diff --git a/bfd/Makefile.am b/bfd/Makefile.am
+index f727ebeb28..83e090ac6d 100644
+--- a/bfd/Makefile.am
++++ b/bfd/Makefile.am
+@@ -176,7 +176,8 @@ ALL_MACHINES = \
+ 	cpu-xstormy16.lo \
+ 	cpu-xtensa.lo \
+ 	cpu-z80.lo \
+-	cpu-z8k.lo
++	cpu-z8k.lo \
++	cpu-stm8.lo
+ 
+ ALL_MACHINES_CFILES = \
+ 	cpu-aarch64.c \
+@@ -266,7 +267,8 @@ ALL_MACHINES_CFILES = \
+ 	cpu-xstormy16.c \
+ 	cpu-xtensa.c \
+ 	cpu-z80.c \
+-	cpu-z8k.c
++	cpu-z8k.c \
++	cpu-stm8.c
+ 
+ # The .o files needed by all of the 32 bit vectors that are configured into
+ # target_vector in targets.c if configured with --enable-targets=all.
+@@ -465,7 +467,8 @@ BFD32_BACKENDS = \
+ 	xcofflink.lo \
+ 	xsym.lo \
+ 	xtensa-isa.lo \
+-	xtensa-modules.lo
++	xtensa-modules.lo \
++	elf32-stm8.lo
+ 
+ BFD32_BACKENDS_CFILES = \
+ 	aout-adobe.c \
+@@ -661,7 +664,8 @@ BFD32_BACKENDS_CFILES = \
+ 	xcofflink.c \
+ 	xsym.c \
+ 	xtensa-isa.c \
+-	xtensa-modules.c
++	xtensa-modules.c \
++	elf32-stm8.c
+ 
+ # The .o files needed by all of the 64 bit vectors that are configured into
+ # target_vector in targets.c if configured with --enable-targets=all
+diff --git a/bfd/Makefile.in b/bfd/Makefile.in
+index 40608238b7..e26cfc58c5 100644
+--- a/bfd/Makefile.in
++++ b/bfd/Makefile.in
+@@ -509,7 +509,8 @@ ALL_MACHINES = \
+ 	cpu-xstormy16.lo \
+ 	cpu-xtensa.lo \
+ 	cpu-z80.lo \
+-	cpu-z8k.lo
++	cpu-z8k.lo \
++	cpu-stm8.lo
+ 
+ ALL_MACHINES_CFILES = \
+ 	cpu-aarch64.c \
+@@ -599,7 +600,8 @@ ALL_MACHINES_CFILES = \
+ 	cpu-xstormy16.c \
+ 	cpu-xtensa.c \
+ 	cpu-z80.c \
+-	cpu-z8k.c
++	cpu-z8k.c \
++	cpu-stm8.c
+ 
+ 
+ # The .o files needed by all of the 32 bit vectors that are configured into
+@@ -799,7 +801,8 @@ BFD32_BACKENDS = \
+ 	xcofflink.lo \
+ 	xsym.lo \
+ 	xtensa-isa.lo \
+-	xtensa-modules.lo
++	xtensa-modules.lo \
++	elf32-stm8.lo
+ 
+ BFD32_BACKENDS_CFILES = \
+ 	aout-adobe.c \
+@@ -995,7 +998,8 @@ BFD32_BACKENDS_CFILES = \
+ 	xcofflink.c \
+ 	xsym.c \
+ 	xtensa-isa.c \
+-	xtensa-modules.c
++	xtensa-modules.c \
++	elf32-stm8.c
+ 
+ 
+ # The .o files needed by all of the 64 bit vectors that are configured into
+@@ -1446,6 +1450,7 @@ distclean-compile:
+ @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/cpu-sh.Plo@am__quote@
+ @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/cpu-sparc.Plo@am__quote@
+ @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/cpu-spu.Plo@am__quote@
++@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/cpu-stm8.Plo@am__quote@
+ @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/cpu-tic30.Plo@am__quote@
+ @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/cpu-tic4x.Plo@am__quote@
+ @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/cpu-tic54x.Plo@am__quote@
+@@ -1542,6 +1547,7 @@ distclean-compile:
+ @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/elf32-sh64.Plo@am__quote@
+ @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/elf32-sparc.Plo@am__quote@
+ @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/elf32-spu.Plo@am__quote@
++@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/elf32-stm8.Plo@am__quote@
+ @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/elf32-tic6x.Plo@am__quote@
+ @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/elf32-tilegx.Plo@am__quote@
+ @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/elf32-tilepro.Plo@am__quote@
+diff --git a/bfd/archures.c b/bfd/archures.c
+index e83c57a2f3..d23bb2c77a 100644
+--- a/bfd/archures.c
++++ b/bfd/archures.c
+@@ -537,6 +537,8 @@ DESCRIPTION
+ .#define bfd_mach_wasm32	1
+ .  bfd_arch_pru,       {* PRU.  *}
+ .#define bfd_mach_pru		0
++.  bfd_arch_stm8,	{* ST STM8 *}
++.#define bfd_mach_stm8 1
+ .  bfd_arch_last
+ .  };
+ */
+@@ -670,6 +672,7 @@ extern const bfd_arch_info_type bfd_xc16x_arch;
+ extern const bfd_arch_info_type bfd_xgate_arch;
+ extern const bfd_arch_info_type bfd_z80_arch;
+ extern const bfd_arch_info_type bfd_z8k_arch;
++extern const bfd_arch_info_type bfd_stm8_arch;
+ 
+ static const bfd_arch_info_type * const bfd_archures_list[] =
+   {
+@@ -762,6 +765,7 @@ static const bfd_arch_info_type * const bfd_archures_list[] =
+     &bfd_xgate_arch,
+     &bfd_z80_arch,
+     &bfd_z8k_arch,
++    &bfd_stm8_arch,
+ #endif
+   0
+ };
+diff --git a/bfd/bfd-in2.h b/bfd/bfd-in2.h
+index f4b3720b4b..78221ddcc1 100644
+--- a/bfd/bfd-in2.h
++++ b/bfd/bfd-in2.h
+@@ -2398,6 +2398,8 @@ enum bfd_architecture
+ #define bfd_mach_wasm32        1
+   bfd_arch_pru,       /* PRU.  */
+ #define bfd_mach_pru           0
++  bfd_arch_stm8,       /* ST STM8 */
++#define bfd_mach_stm8 1
+   bfd_arch_last
+   };
+ 
+@@ -6512,6 +6514,9 @@ assembler and not (currently) written to any object files.  */
+   BFD_RELOC_WASM32_CODE_POINTER,
+   BFD_RELOC_WASM32_INDEX,
+   BFD_RELOC_WASM32_PLT_SIG,
++
++/* STM8 bit field immediate for BTJx, BCPL, BSET, BRES  instruction.  */
++  BFD_RELOC_STM8_BIT_FLD,
+   BFD_RELOC_UNUSED };
+ 
+ typedef enum bfd_reloc_code_real bfd_reloc_code_real_type;
+diff --git a/bfd/config.bfd b/bfd/config.bfd
+index f04a993f06..ec98fc050f 100644
+--- a/bfd/config.bfd
++++ b/bfd/config.bfd
+@@ -203,6 +203,7 @@ xtensa*)	 targ_archs=bfd_xtensa_arch ;;
+ xgate)		 targ_archs=bfd_xgate_arch ;;
+ z80|r800)	 targ_archs=bfd_z80_arch ;;
+ z8k*)		 targ_archs=bfd_z8k_arch ;;
++stm8*)		 targ_archs=bfd_stm8_arch ;;
+ *)		 targ_archs=bfd_${targ_cpu}_arch ;;
+ esac
+ 
+@@ -1850,6 +1851,11 @@ case "${targ}" in
+     targ_underscore=yes
+     ;;
+ 
++  stm8-*-elf*)
++    targ_defvec=stm8_elf32_vec
++    targ_underscore=yes
++    ;;
++
+   *-*-ieee*)
+     targ_defvec=ieee_vec
+     ;;
+diff --git a/bfd/configure b/bfd/configure
+index 32ee062e80..463d0bedb6 100755
+--- a/bfd/configure
++++ b/bfd/configure
+@@ -14641,6 +14641,7 @@ do
+     xtensa_elf32_le_vec)	 tb="$tb xtensa-isa.lo xtensa-modules.lo elf32-xtensa.lo elf32.lo $elf" ;;
+     z80_coff_vec)		 tb="$tb coff-z80.lo reloc16.lo $coffgen" ;;
+     z8k_coff_vec)		 tb="$tb coff-z8k.lo reloc16.lo $coff" ;;
++    stm8_elf32_vec)		 tb="$tb elf32-stm8.lo elf32.lo $elf" ;;
+ 
+     # These appear out of order in targets.c
+     srec_vec)			 tb="$tb srec.lo" ;;
+diff --git a/bfd/configure.ac b/bfd/configure.ac
+index 2342f3faea..d093fbe418 100644
+--- a/bfd/configure.ac
++++ b/bfd/configure.ac
+@@ -723,6 +723,7 @@ do
+     xtensa_elf32_le_vec)	 tb="$tb xtensa-isa.lo xtensa-modules.lo elf32-xtensa.lo elf32.lo $elf" ;;
+     z80_coff_vec)		 tb="$tb coff-z80.lo reloc16.lo $coffgen" ;;
+     z8k_coff_vec)		 tb="$tb coff-z8k.lo reloc16.lo $coff" ;;
++    stm8_elf32_vec)		 tb="$tb elf32-stm8.lo elf32.lo $elf" ;;
+ 
+     # These appear out of order in targets.c
+     srec_vec)			 tb="$tb srec.lo" ;;
+diff --git a/bfd/cpu-stm8.c b/bfd/cpu-stm8.c
+new file mode 100644
+index 0000000000..feb6cf805e
+--- /dev/null
++++ b/bfd/cpu-stm8.c
+@@ -0,0 +1,40 @@
++/* BFD support for the STM8 processor.
++   Copyright (C) 2007-2016 Free Software Foundation, Inc.
++   Written by Åke Rehnman (at) gmail dot com
++
++   This file is part of BFD, the Binary File Descriptor library.
++
++   This program is free software; you can redistribute it and/or modify
++   it under the terms of the GNU General Public License as published by
++   the Free Software Foundation; either version 3 of the License, or
++   (at your option) any later version.
++
++   This program is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++   GNU General Public License for more details.
++
++   You should have received a copy of the GNU General Public License
++   along with this program; if not, write to the Free Software Foundation,
++   Inc., 51 Franklin Street - Fifth Floor, Boston, MA 02110-1301, USA.  */
++
++#include "sysdep.h"
++#include "bfd.h"
++#include "libbfd.h"
++
++const bfd_arch_info_type bfd_stm8_arch =
++{
++  8,                           /* bits per word */
++  24,                           /* bits per address */
++  8,                            /* bits per byte */
++  bfd_arch_stm8,                /* architecture */
++  bfd_mach_stm8,                /* machine */
++  "stm8",                       /* architecture name */
++  "stm8",                       /* printable name */
++  4,                            /* section align power */
++  TRUE,                         /* the default ? */
++  bfd_default_compatible,       /* architecture comparison fn */
++  bfd_default_scan,             /* string to architecture convert fn */
++  bfd_arch_default_fill,
++  0,
++};
+diff --git a/bfd/cpu-stm8.h b/bfd/cpu-stm8.h
+new file mode 100644
+index 0000000000..665642ca3e
+--- /dev/null
++++ b/bfd/cpu-stm8.h
+@@ -0,0 +1,6 @@
++#ifndef __CPU_STM8_H
++#define __CPU_STM8_H
++
++extern bfd_stm8_arch;
++
++#endif
+diff --git a/bfd/elf32-stm8.c b/bfd/elf32-stm8.c
+new file mode 100644
+index 0000000000..37995553c3
+--- /dev/null
++++ b/bfd/elf32-stm8.c
+@@ -0,0 +1,285 @@
++/* STM8-specific support for 32-bit ELF
++   Copyright (C) 2007-2016 Free Software Foundation, Inc.
++   Written by Åke Rehnman (at) gmail dot com
++
++   This file is part of BFD, the Binary File Descriptor library.
++
++   This program is free software; you can redistribute it and/or modify
++   it under the terms of the GNU General Public License as published by
++   the Free Software Foundation; either version 3 of the License, or
++   (at your option) any later version.
++
++   This program is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++   GNU General Public License for more details.
++
++   You should have received a copy of the GNU General Public License
++   along with this program; if not, write to the Free Software Foundation,
++   Inc., 51 Franklin Street - Fifth Floor, Boston, MA 02110-1301, USA.  */
++
++#include "sysdep.h"
++#include "bfd.h"
++#include "bfd_stdint.h"
++#include "libiberty.h"
++#include "libbfd.h"
++#include "elf-bfd.h"
++
++#include "elf/stm8.h"
++//#include "elf32-avr.h"
++#include "bfd_stdint.h"
++
++bfd_reloc_status_type
++bfd_elf_stm8_spec_reloc (bfd *abfd ATTRIBUTE_UNUSED,
++		       arelent *reloc_entry,
++		       asymbol *symbol,
++		       void *data ATTRIBUTE_UNUSED,
++		       asection *input_section,
++		       bfd *output_bfd,
++		       char **error_message ATTRIBUTE_UNUSED);
++
++static reloc_howto_type elf32_stm8_howto_table_1[] =
++{
++  HOWTO (R_STM8_NONE,           /* type */
++         0,                     /* rightshift */
++         3,                     /* size (0 = byte, 1 = short, 2 = long) */
++         0,                     /* bitsize */
++         FALSE,                 /* pc_relative */
++         0,                     /* bitpos */
++         complain_overflow_dont, /* complain_on_overflow */
++         bfd_elf_generic_reloc, /* special_function */
++         "R_STM8_NONE",         /* name */
++         FALSE,                 /* partial_inplace */
++         0,                     /* src_mask */
++         0,                     /* dst_mask */
++         FALSE),                /* pcrel_offset */
++         
++  /* 8 bit offset.  */
++  HOWTO (R_STM8_8,              /* type */
++         0,                     /* rightshift */
++         0,                     /* size (0 = byte, 1 = short, 2 = long) */
++         8,                     /* bitsize */
++         FALSE,                 /* pc_relative */
++         0,                     /* bitpos */
++         complain_overflow_unsigned,/* complain_on_overflow */
++         bfd_elf_generic_reloc, /* special_function */
++         "R_STM8_8",            /* name */
++         FALSE,                 /* partial_inplace */
++         0x0,                   /* src_mask */
++         0xff,                  /* dst_mask */
++         FALSE),                /* pcrel_offset */
++         
++  /* A 16 bit absolute relocation.  */
++  HOWTO (R_STM8_16,             /* type */
++         0,                     /* rightshift */
++         1,                     /* size (0 = byte, 1 = short, 2 = long) */
++         16,                    /* bitsize */
++         FALSE,                 /* pc_relative */
++         0,                     /* bitpos */
++         complain_overflow_unsigned,/* complain_on_overflow */
++         bfd_elf_generic_reloc, /* special_function */
++         "R_STM8_16",           /* name */
++         FALSE,                 /* partial_inplace */
++         0x0,                   /* src_mask */
++         0xffff,                /* dst_mask */
++         FALSE),                /* pcrel_offset */
++         
++//use this with unpatched bfd_get_reloc_size
++  HOWTO (R_STM8_24,             /* type */
++         0,                     /* rightshift */
++         2,                     /* size (0 = byte, 1 = short, 2 = long) */
++         24,                    /* bitsize */
++         FALSE,                 /* pc_relative */
++         0,                     /* bitpos */ //the relocation use bfd_get_32 so our relocation end up in the upper 24 bits and so relocation value has to be shifted 8 bits to the left
++         complain_overflow_unsigned, /* complain_on_overflow */
++         //bfd_elf_stm8_spec_reloc,     /* special_function */
++         bfd_elf_generic_reloc, /* special_function */
++         "R_STM8_24",           /* name */
++         FALSE,                 /* partial_inplace */
++         0xff000000,            /* src_mask */
++         0x00ffffff,            /* dst_mask */
++         FALSE),                /* pcrel_offset */
++
++//  HOWTO (R_STM8_24,             /* type */
++//         0,                     /* rightshift */
++//         99,                    /* size (0 = byte, 1 = short, 2 = long, 99 = 24 bit) */
++//         24,                    /* bitsize */
++//         FALSE,                 /* pc_relative */
++//         0,                     /* bitpos */ //the relocation use bfd_get_32 so our relocation end up in the upper 24 bits and so relocation value has to be shifted 8 bits to the left
++//         complain_overflow_unsigned, /* complain_on_overflow */
++//         bfd_elf_generic_reloc, /* special_function */
++//         "R_STM8_24",           /* name */
++//         FALSE,                 /* partial_inplace */
++//         0x00,                  /* src_mask */
++//         0xffffff,              /* dst_mask */
++//         FALSE),                /* pcrel_offset */
++         
++  HOWTO (R_STM8_32,             /* type */
++         0,                     /* rightshift */
++         2,                     /* size (0 = byte, 1 = short, 2 = long) */
++         32,                    /* bitsize */
++         FALSE,                 /* pc_relative */
++         0,                     /* bitpos */
++         complain_overflow_unsigned, /* complain_on_overflow */
++         bfd_elf_generic_reloc, /* special_function */
++         "R_STM8_32",           /* name */
++         FALSE,                 /* partial_inplace */
++         0x0,                   /* src_mask */
++         0xffffffff,            /* dst_mask */
++         FALSE),                /* pcrel_offset */
++
++  /* A 8 bit PC relative relocation.  */
++  HOWTO (R_STM8_8_PCREL,        /* type */
++         0,                     /* rightshift */
++         0,                     /* size (0 = byte, 1 = short, 2 = long) */
++         8,                     /* bitsize */
++         TRUE,                  /* pc_relative */
++         0,                     /* bitpos */
++         complain_overflow_signed, /* complain_on_overflow */
++         bfd_elf_generic_reloc, /* special_function */
++         "R_STM8_8_PCREL",      /* name */
++         FALSE,                 /* partial_inplace */
++         0x0,                   /* src_mask */
++         0xff,                  /* dst_mask */
++         TRUE),                 /* pcrel_offset */
++};
++
++//stupid bfd_elf_generic_reloc cant handle 24-bit relocations  
++//so we have to write our own...
++bfd_reloc_status_type
++bfd_elf_stm8_spec_reloc (bfd *abfd ATTRIBUTE_UNUSED,
++		       arelent *reloc_entry,
++		       asymbol *symbol,
++		       void *data ATTRIBUTE_UNUSED,
++		       asection *input_section ATTRIBUTE_UNUSED,
++		       bfd *output_bfd,
++		       char **error_message ATTRIBUTE_UNUSED)
++{
++  if (output_bfd != NULL
++      && (symbol->flags & BSF_SECTION_SYM) == 0
++      && (! reloc_entry->howto->partial_inplace
++	  || reloc_entry->addend == 0))
++    {
++      reloc_entry->address += input_section->output_offset+1;
++      return bfd_reloc_ok;
++    }
++  
++  if (output_bfd == NULL)
++	  return bfd_reloc_continue;
++  reloc_entry->address += input_section->output_offset-1;
++  return bfd_reloc_continue;
++}
++
++static reloc_howto_type *
++elf32_stm8_howto_from_type (unsigned int r_type)
++{
++  if (r_type < ARRAY_SIZE (elf32_stm8_howto_table_1))
++    return &elf32_stm8_howto_table_1[r_type];
++
++  return NULL;
++}
++
++static void
++elf32_stm8_info_to_howto (bfd * abfd ATTRIBUTE_UNUSED, arelent * bfd_reloc,
++                         Elf_Internal_Rela * elf_reloc)
++{
++  unsigned int r_type;
++
++  r_type = ELF32_R_TYPE (elf_reloc->r_info);
++  bfd_reloc->howto = elf32_stm8_howto_from_type (r_type);
++}
++
++struct elf32_stm8_reloc_map
++  {
++    bfd_reloc_code_real_type  bfd_reloc_val;
++    unsigned char             elf_reloc_val;
++  };
++
++/* All entries in this list must also be present in elf32_stm8_howto_table.  */
++static const struct elf32_stm8_reloc_map elf32_stm8_reloc_map[] =
++{
++  { BFD_RELOC_NONE,                 R_STM8_NONE },
++  { BFD_RELOC_8,                    R_STM8_8 },
++  { BFD_RELOC_16,                   R_STM8_16 },
++  { BFD_RELOC_24,                   R_STM8_24 },
++  { BFD_RELOC_32,                   R_STM8_32 },
++  { BFD_RELOC_8_PCREL,              R_STM8_8_PCREL}
++};
++
++static reloc_howto_type *
++elf32_stm8_reloc_type_lookup (bfd *abfd ATTRIBUTE_UNUSED,
++                             bfd_reloc_code_real_type code)
++{
++  unsigned int i;
++
++  for (i = 0; i < ARRAY_SIZE (elf32_stm8_reloc_map); i ++)
++    if (elf32_stm8_reloc_map[i].bfd_reloc_val == code)
++      return elf32_stm8_howto_from_type (elf32_stm8_reloc_map[i].elf_reloc_val);
++
++  return NULL;
++}
++
++static reloc_howto_type *
++elf32_stm8_reloc_name_lookup (bfd *abfd ATTRIBUTE_UNUSED,
++                             const char *r_name)
++{
++  unsigned int i;
++
++  for (i = 0; i < ARRAY_SIZE (elf32_stm8_howto_table_1); i++)
++    if (elf32_stm8_howto_table_1[i].name != NULL
++        && strcasecmp (elf32_stm8_howto_table_1[i].name, r_name) == 0)
++      return &elf32_stm8_howto_table_1[i];
++
++  return NULL;
++}
++
++static void
++elf32_stm8_post_process_headers (bfd *abfd,
++				 struct bfd_link_info *info ATTRIBUTE_UNUSED)
++{
++  Elf_Internal_Ehdr *i_ehdrp = elf_elfheader (abfd);
++//  i_ehdrp->e_ident[EI_OSABI] = ELFOSABI_STANDALONE;
++//  i_ehdrp->e_ident[EI_OSABI] = ELFOSABI_ARM;
++//	i_ehdrp->e_ident[EI_OSABI] = get_elf_backend_data (abfd)->elf_osabi;
++  i_ehdrp->e_ident[EI_ABIVERSION] = 0;
++}
++
++static bfd_boolean
++elf32_stm8_modify_segment_map (bfd *abfd,
++            struct bfd_link_info *info ATTRIBUTE_UNUSED)
++{
++  struct elf_segment_map *m;
++  return TRUE;
++  m = elf_seg_map (abfd);
++  while (m)
++  {
++  	m->includes_filehdr = 0;
++  	m->includes_phdrs = 0;
++  	m = m->next;
++  }
++  return TRUE;
++}
++
++
++#define elf_backend_post_process_headers	elf32_stm8_post_process_headers
++#define elf_backend_modify_segment_map    elf32_stm8_modify_segment_map
++
++#define bfd_elf32_bfd_reloc_type_lookup         elf32_stm8_reloc_type_lookup
++#define bfd_elf32_bfd_reloc_name_lookup         elf32_stm8_reloc_name_lookup
++
++#define ELF_ARCH                bfd_arch_stm8
++//#define ELF_TARGET_ID         AVR_ELF_DATA
++#define ELF_TARGET_ID           GENERIC_ELF_DATA
++#define ELF_MACHINE_CODE        EM_STM8
++//#define	ELF_OSABI               ELFOSABI_STANDALONE
++//#define ELF_MACHINE_ALT1      EM_STM8_OLD
++#define ELF_MAXPAGESIZE         1
++//#define TARGET_LITTLE_SYM       stm8_elf32_vec
++//#define TARGET_LITTLE_NAME    "elf32-stm8"
++#define TARGET_BIG_SYM          stm8_elf32_vec
++#define TARGET_BIG_NAME         "elf32-stm8"
++
++#define elf_info_to_howto                    elf32_stm8_info_to_howto
++#define elf_info_to_howto_rel                NULL
++
++#include "elf32-target.h"
+diff --git a/bfd/elfcode.h b/bfd/elfcode.h
+index 00a900124a..eec2588464 100644
+--- a/bfd/elfcode.h
++++ b/bfd/elfcode.h
+@@ -1468,12 +1468,22 @@ elf_slurp_reloc_table_from_section (bfd *abfd,
+ 
+       relent->addend = rela.r_addend;
+ 
+-      if ((entsize == sizeof (Elf_External_Rela)
+-	   && ebd->elf_info_to_howto != NULL)
+-	  || ebd->elf_info_to_howto_rel == NULL)
+-	(*ebd->elf_info_to_howto) (abfd, relent, &rela);
+-      else
+-	(*ebd->elf_info_to_howto_rel) (abfd, relent, &rela);
++// Ake Rehnman 2017-02-21
++// bug fixed, preventing call to elf_info_to_howto_rel 
++// if elf_info_to_howto is NULL
++//      if ((entsize == sizeof (Elf_External_Rela)
++//	   && ebd->elf_info_to_howto != NULL)
++//	  || ebd->elf_info_to_howto_rel == NULL)
++//	(*ebd->elf_info_to_howto) (abfd, relent, &rela);
++//      else
++//	(*ebd->elf_info_to_howto_rel) (abfd, relent, &rela);
++      if (entsize == sizeof (Elf_External_Rela))
++      {
++	if (ebd->elf_info_to_howto)
++		(*ebd->elf_info_to_howto) (abfd, relent, &rela);
++	else if (ebd->elf_info_to_howto_rel)
++		(*ebd->elf_info_to_howto_rel) (abfd, relent, &rela);
++      }
+     }
+ 
+   if (allocated != NULL)
+diff --git a/bfd/libbfd.h b/bfd/libbfd.h
+index 2f5f16e776..fca8c19eed 100644
+--- a/bfd/libbfd.h
++++ b/bfd/libbfd.h
+@@ -3188,6 +3188,7 @@ static const char *const bfd_reloc_code_real_names[] = { "@@uninitialized@@",
+   "BFD_RELOC_WASM32_CODE_POINTER",
+   "BFD_RELOC_WASM32_INDEX",
+   "BFD_RELOC_WASM32_PLT_SIG",
++  "BFD_RELOC_STM8_BIT_FLD",
+  "@@overflow: BFD_RELOC_UNUSED@@",
+ };
+ #endif
+diff --git a/bfd/reloc.c b/bfd/reloc.c
+index a1353a281b..c7b862aab5 100644
+--- a/bfd/reloc.c
++++ b/bfd/reloc.c
+@@ -7931,6 +7931,11 @@ ENUMX
+ ENUMDOC
+   WebAssembly relocations.
+ 
++ENUM
++  BFD_RELOC_STM8_BIT_FLD
++ENUMDOC
++  STM8 bit field immediate for BTJx, BCPL, BSET, BRES  instruction.
++
+ ENDSENUM
+   BFD_RELOC_UNUSED
+ CODE_FRAGMENT
+diff --git a/bfd/targets.c b/bfd/targets.c
+index 43102d428b..0e6f7dae2e 100644
+--- a/bfd/targets.c
++++ b/bfd/targets.c
+@@ -930,6 +930,7 @@ extern const bfd_target xtensa_elf32_be_vec;
+ extern const bfd_target xtensa_elf32_le_vec;
+ extern const bfd_target z80_coff_vec;
+ extern const bfd_target z8k_coff_vec;
++extern const bfd_target stm8_elf32_vec;
+ 
+ /* These are always included.  */
+ extern const bfd_target srec_vec;
+@@ -1174,6 +1175,7 @@ static const bfd_target * const _bfd_target_vector[] =
+ 
+ 	&m68hc11_elf32_vec,
+ 	&m68hc12_elf32_vec,
++	&stm8_elf32_vec,
+ 
+ #if 0
+ 	&m68k_aout_4knbsd_vec,
+diff --git a/config.sub b/config.sub
+index 40ea5dfe11..d4a68493c0 100755
+--- a/config.sub
++++ b/config.sub
+@@ -318,7 +318,8 @@ case $basic_machine in
+ 	| wasm32 \
+ 	| we32k \
+ 	| x86 | xc16x | xstormy16 | xtensa \
+-	| z8k | z80)
++	| z8k | z80 \
++	| stm8)
+ 		basic_machine=$basic_machine-unknown
+ 		;;
+ 	c54x)
+@@ -452,7 +453,8 @@ case $basic_machine in
+ 	| x86-* | x86_64-* | xc16x-* | xps100-* \
+ 	| xstormy16-* | xtensa*-* \
+ 	| ymp-* \
+-	| z8k-* | z80-*)
++	| z8k-* | z80-* \
++	| stm8-*)
+ 		;;
+ 	# Recognize the basic CPU types without company name, with glob match.
+ 	xtensa*)
+diff --git a/gas/Makefile.am b/gas/Makefile.am
+index 5aa68f3c6a..b6af0cf2ca 100644
+--- a/gas/Makefile.am
++++ b/gas/Makefile.am
+@@ -203,7 +203,8 @@ TARGET_CPU_CFILES = \
+ 	config/tc-xtensa.c \
+ 	config/tc-z80.c \
+ 	config/tc-z8k.c \
+-	config/xtensa-relax.c
++	config/xtensa-relax.c \
++	config/tc-stm8.c
+ 
+ TARGET_CPU_HFILES = \
+ 	config/tc-aarch64.h \
+@@ -279,7 +280,8 @@ TARGET_CPU_HFILES = \
+ 	config/tc-xtensa.h \
+ 	config/tc-z80.h \
+ 	config/tc-z8k.h \
+-	config/xtensa-relax.h
++	config/xtensa-relax.h \
++	config/tc-stm8.h
+ 
+ # OBJ files in config
+ 
+diff --git a/gas/Makefile.in b/gas/Makefile.in
+index 51e96e52c1..b6d76c5348 100644
+--- a/gas/Makefile.in
++++ b/gas/Makefile.in
+@@ -499,7 +499,8 @@ TARGET_CPU_CFILES = \
+ 	config/tc-xtensa.c \
+ 	config/tc-z80.c \
+ 	config/tc-z8k.c \
+-	config/xtensa-relax.c
++	config/xtensa-relax.c \
++	config/tc-stm8.c
+ 
+ TARGET_CPU_HFILES = \
+ 	config/tc-aarch64.h \
+@@ -575,7 +576,8 @@ TARGET_CPU_HFILES = \
+ 	config/tc-xtensa.h \
+ 	config/tc-z80.h \
+ 	config/tc-z8k.h \
+-	config/xtensa-relax.h
++	config/xtensa-relax.h \
++	config/tc-stm8.h
+ 
+ 
+ # OBJ files in config
+@@ -920,6 +922,7 @@ distclean-compile:
+ @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/tc-sh64.Po@am__quote@
+ @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/tc-sparc.Po@am__quote@
+ @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/tc-spu.Po@am__quote@
++@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/tc-stm8.Po@am__quote@
+ @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/tc-tic30.Po@am__quote@
+ @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/tc-tic4x.Po@am__quote@
+ @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/tc-tic54x.Po@am__quote@
+@@ -2011,6 +2014,20 @@ xtensa-relax.obj: config/xtensa-relax.c
+ @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+ @am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o xtensa-relax.obj `if test -f 'config/xtensa-relax.c'; then $(CYGPATH_W) 'config/xtensa-relax.c'; else $(CYGPATH_W) '$(srcdir)/config/xtensa-relax.c'; fi`
+ 
++tc-stm8.o: config/tc-stm8.c
++@am__fastdepCC_TRUE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT tc-stm8.o -MD -MP -MF $(DEPDIR)/tc-stm8.Tpo -c -o tc-stm8.o `test -f 'config/tc-stm8.c' || echo '$(srcdir)/'`config/tc-stm8.c
++@am__fastdepCC_TRUE@	$(am__mv) $(DEPDIR)/tc-stm8.Tpo $(DEPDIR)/tc-stm8.Po
++@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='config/tc-stm8.c' object='tc-stm8.o' libtool=no @AMDEPBACKSLASH@
++@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
++@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o tc-stm8.o `test -f 'config/tc-stm8.c' || echo '$(srcdir)/'`config/tc-stm8.c
++
++tc-stm8.obj: config/tc-stm8.c
++@am__fastdepCC_TRUE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT tc-stm8.obj -MD -MP -MF $(DEPDIR)/tc-stm8.Tpo -c -o tc-stm8.obj `if test -f 'config/tc-stm8.c'; then $(CYGPATH_W) 'config/tc-stm8.c'; else $(CYGPATH_W) '$(srcdir)/config/tc-stm8.c'; fi`
++@am__fastdepCC_TRUE@	$(am__mv) $(DEPDIR)/tc-stm8.Tpo $(DEPDIR)/tc-stm8.Po
++@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='config/tc-stm8.c' object='tc-stm8.obj' libtool=no @AMDEPBACKSLASH@
++@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
++@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o tc-stm8.obj `if test -f 'config/tc-stm8.c'; then $(CYGPATH_W) 'config/tc-stm8.c'; else $(CYGPATH_W) '$(srcdir)/config/tc-stm8.c'; fi`
++
+ obj-aout.o: config/obj-aout.c
+ @am__fastdepCC_TRUE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT obj-aout.o -MD -MP -MF $(DEPDIR)/obj-aout.Tpo -c -o obj-aout.o `test -f 'config/obj-aout.c' || echo '$(srcdir)/'`config/obj-aout.c
+ @am__fastdepCC_TRUE@	$(am__mv) $(DEPDIR)/obj-aout.Tpo $(DEPDIR)/obj-aout.Po
+diff --git a/gas/config/tc-stm8.c b/gas/config/tc-stm8.c
+new file mode 100644
+index 0000000000..84e667278e
+--- /dev/null
++++ b/gas/config/tc-stm8.c
+@@ -0,0 +1,1026 @@
++/* tc-stm8.c -- Assembler for the STM8.
++   Written by Ake Rehnman 2017-02-21,
++   ake.rehnman (at) gmail dot com
++
++   Copyright (C) 2007-2017 Free Software Foundation, Inc.
++
++   This file is part of BFD, the Binary File Descriptor library.
++
++   This program is free software; you can redistribute it and/or modify
++   it under the terms of the GNU General Public License as published by
++   the Free Software Foundation; either version 3 of the License, or
++   (at your option) any later version.
++
++   This program is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++   GNU General Public License for more details.
++
++   You should have received a copy of the GNU General Public License
++   along with this program; if not, write to the Free Software Foundation,
++   Inc., 51 Franklin Street - Fifth Floor, Boston, MA 02110-1301, USA.  */
++
++#include "as.h"
++#include <stdio.h>
++#include <stdbool.h>
++#include <string.h>
++#include <ctype.h>
++#include "opcode/stm8.h"
++
++typedef enum {
++	OP_ILLEGAL = 0,
++	OP_IMM,
++	OP_SHORTMEM,
++	OP_MEM,
++	OP_INDX,
++	OP_INDY,
++	OP_OFF_X,
++	OP_OFF_Y,
++	OP_OFF_SP,
++	OP_PTRW,
++	OP_PTRE,
++	OP_PTRW_X,
++	OP_PTRW_Y,
++	OP_PTRE_X,
++	OP_PTRE_Y,
++	OP_REGISTER
++} stm8_operand_t;
++
++static struct hash_control *stm8_hash;
++
++const char comment_chars[] = ";";
++const char line_comment_chars[] = "#";
++const char line_separator_chars[] = "{";
++
++int md_short_jump_size = 3;
++int md_long_jump_size = 4;
++
++/* The target specific pseudo-ops which we support.  */
++/* example:
++const pseudo_typeS md_pseudo_table[] =
++{
++  {"arch", avr_set_arch,  0},
++  { NULL, NULL,   0}
++};
++*/
++const pseudo_typeS md_pseudo_table[] =
++{
++  { NULL, NULL,   0}
++};
++
++const char EXP_CHARS[] = "eE";
++
++/* Chars that mean this number is a floating point constant.
++   As in 0f12.456
++   or    0d1.2345e12  */
++const char FLT_CHARS[] = "rRsSfFdDxXpP";
++
++/* On the Z8000, a PC-relative offset is relative to the address of the
++   instruction plus its size.  */
++long
++md_pcrel_from (fixS *fixP)
++{
++  return fixP->fx_size + fixP->fx_where + fixP->fx_frag->fr_address;
++}
++
++const char *
++md_atof (int type, char *litP, int *sizeP)
++{
++  return ieee_md_atof (type, litP, sizeP, TRUE);
++}
++
++void
++md_show_usage (FILE *stream)
++{
++  fprintf (stream, _("\
++  STM8 options:\n\
++  "));
++}
++
++const char *md_shortopts = "";
++
++struct option md_longopts[] =
++  {
++    {NULL, no_argument, NULL, 0}
++  };
++
++size_t md_longopts_size = sizeof (md_longopts);
++
++void
++md_begin (void)
++{
++  const struct stm8_opcodes_s *opcode;
++  stm8_hash = hash_new ();
++  
++  /* Insert unique names into hash table.  This hash table then provides a
++  quick index to the first opcode with a particular name in the opcode
++  table.  */
++  for (opcode = stm8_opcodes; opcode->name; opcode++)
++    hash_insert (stm8_hash, opcode->name, (char *) opcode);
++
++  //add register names to symbol table
++
++  symbol_table_insert (symbol_create ("A", reg_section,
++		  ST8_REG_A, &zero_address_frag));
++
++  symbol_table_insert (symbol_create ("X", reg_section,
++		  ST8_REG_X, &zero_address_frag));
++
++  symbol_table_insert (symbol_create ("Y", reg_section,
++		  ST8_REG_Y, &zero_address_frag));
++
++  symbol_table_insert (symbol_create ("SP", reg_section,
++		  ST8_REG_SP, &zero_address_frag));
++
++  symbol_table_insert (symbol_create ("CC", reg_section,
++		  ST8_REG_CC, &zero_address_frag));
++
++  symbol_table_insert (symbol_create ("XL", reg_section,
++		  ST8_REG_XL, &zero_address_frag));
++
++  symbol_table_insert (symbol_create ("XH", reg_section,
++		  ST8_REG_XH, &zero_address_frag));
++
++  symbol_table_insert (symbol_create ("YL", reg_section,
++		  ST8_REG_YL, &zero_address_frag));
++
++  symbol_table_insert (symbol_create ("YH", reg_section,
++		  ST8_REG_YH, &zero_address_frag));
++
++  symbol_table_insert (symbol_create ("a", reg_section,
++		  ST8_REG_A, &zero_address_frag));
++
++  symbol_table_insert (symbol_create ("x", reg_section,
++		  ST8_REG_X, &zero_address_frag));
++
++  symbol_table_insert (symbol_create ("y", reg_section,
++		  ST8_REG_Y, &zero_address_frag));
++
++  symbol_table_insert (symbol_create ("sp", reg_section,
++		  ST8_REG_SP, &zero_address_frag));
++
++  symbol_table_insert (symbol_create ("cc", reg_section,
++		  ST8_REG_CC, &zero_address_frag));
++
++  symbol_table_insert (symbol_create ("xl", reg_section,
++		  ST8_REG_XL, &zero_address_frag));
++
++  symbol_table_insert (symbol_create ("xh", reg_section,
++		  ST8_REG_XH, &zero_address_frag));
++
++  symbol_table_insert (symbol_create ("yl", reg_section,
++		  ST8_REG_YL, &zero_address_frag));
++
++  symbol_table_insert (symbol_create ("yh", reg_section,
++		  ST8_REG_YH, &zero_address_frag));
++
++}
++
++static inline char *
++skip_space (char *s)
++{
++  while (*s == ' ' || *s == '\t')
++    ++s;
++  return s;
++}
++
++/* Extract one word from FROM and copy it to TO.  */
++
++static char *
++extract_word (char *from, char *to, int limit)
++{
++  char *op_end;
++  int size = 0;
++
++  /* Drop leading whitespace.  */
++  from = skip_space (from);
++  *to = 0;
++
++  /* Find the op code end.  */
++  for (op_end = from; *op_end != 0 && is_part_of_name (*op_end);)
++    {
++      to[size++] = *op_end++;
++      if (size + 1 >= limit)
++  break;
++    }
++
++  to[size] = 0;
++  return op_end;
++}
++
++void
++md_operand (expressionS * exp __attribute__((unused)))
++{
++  /* In case of a syntax error, escape back to try next syntax combo.  */
++  as_bad(_("stm8: call to md_operand"));
++}
++
++void print_fixup (fixS *);
++
++
++
++/* Attempt to simplify or eliminate a fixup. To indicate that a fixup
++   has been eliminated, set fix->fx_done. If fix->fx_addsy is non-NULL,
++   we will have to generate a reloc entry.  */
++void
++md_apply_fix (fixS *fixP, valueT *valP, segT segment ATTRIBUTE_UNUSED)
++{
++  long val = * (long *) valP;
++  char *buf = fixP->fx_where + fixP->fx_frag->fr_literal;
++
++  print_fixup(fixP);
++
++  switch (fixP->fx_r_type)
++    {
++    case BFD_RELOC_8:
++      if (fixP->fx_addsy)
++        {
++          fixP->fx_no_overflow = 1;
++          fixP->fx_done = 0;
++        }
++      else
++        *buf++ = val;
++      break;
++
++    case BFD_RELOC_16:
++      if (fixP->fx_addsy)
++        {
++          fixP->fx_no_overflow = 1;
++          fixP->fx_done = 0;
++        }
++      else
++        {
++          *buf++ = (val >> 8);
++          *buf++ = val;
++        }
++      break;
++
++    case BFD_RELOC_24:
++      if (fixP->fx_addsy)
++        {
++          fixP->fx_no_overflow = 1;
++          fixP->fx_done = 0;
++          fixP->fx_where--;
++        }
++      else
++        {
++          *buf++ = (val >> 16);
++          *buf++ = (val >> 8);
++          *buf++ = val;
++        }
++      break;
++
++    case BFD_RELOC_32:
++      if (fixP->fx_addsy)
++        {
++          fixP->fx_no_overflow = 1;
++          fixP->fx_done = 0;
++        }
++      else
++        {
++          *buf++ = (val >> 24);
++          *buf++ = (val >> 16);
++          *buf++ = (val >> 8);
++          *buf++ = val;
++        }
++      break;
++
++    case BFD_RELOC_8_PCREL:
++      if (fixP->fx_addsy)
++        {
++    	  fixP->fx_pcrel_adjust = -1;
++          fixP->fx_no_overflow = 1;
++          fixP->fx_done = 0;
++        }
++      else
++        {
++          if (val > 127 || val < -128)
++            as_bad_where (fixP->fx_file, fixP->fx_line,
++                          _("relative jump out of range"));
++          *buf++ = val;
++          fixP->fx_no_overflow = 1;
++          fixP->fx_done = 1;
++        }
++      break;
++
++    case BFD_RELOC_STM8_BIT_FLD:
++    	if (val > 7 || val < 0)
++            as_bad_where (fixP->fx_file, fixP->fx_line,
++                          _("bitfield out of range %ld"),val);
++    	*buf++ += val*2;
++        fixP->fx_no_overflow = 1;
++        fixP->fx_done = 1;
++        break;
++
++    default:
++      printf(_("md_apply_fix: unknown r_type 0x%x\n"), fixP->fx_r_type);
++      abort ();
++    }
++
++  if (fixP->fx_addsy == NULL && fixP->fx_pcrel == 0)
++    fixP->fx_done = 1;
++}
++
++/* Generate a machine dependent reloc from a fixup.  */
++
++arelent*
++tc_gen_reloc (asection *section ATTRIBUTE_UNUSED,
++	      fixS *fixp      ATTRIBUTE_UNUSED)
++{
++  arelent *reloc;
++
++  print_fixup(fixp);
++
++  reloc = XNEW (arelent);
++  reloc->sym_ptr_ptr = XNEW (asymbol *);
++  *reloc->sym_ptr_ptr = symbol_get_bfdsym (fixp->fx_addsy);
++  reloc->address = fixp->fx_frag->fr_address + fixp->fx_where;
++  reloc->addend = fixp->fx_offset;
++  if (fixp->fx_r_type == BFD_RELOC_8_PCREL)
++	  reloc->addend = fixp->fx_offset+ fixp->fx_pcrel_adjust;
++  reloc->howto = bfd_reloc_type_lookup (stdoutput, fixp->fx_r_type);
++
++  if (! reloc->howto)
++    {
++      as_bad_where (fixp->fx_file, fixp->fx_line,
++                    _("Cannot represent %s relocation in object file"),
++                    bfd_get_reloc_code_name (fixp->fx_r_type));
++      abort ();
++    }
++  return reloc;
++}
++
++valueT
++md_section_align (segT seg, valueT size)
++{
++	int align = bfd_get_section_alignment (stdoutput, seg);
++	valueT mask = ((valueT) 1 << align) - 1;
++
++	return (size + mask) & ~mask;
++}
++
++int
++md_parse_option (int c __attribute__((unused)), const char *arg __attribute__((unused)))
++{
++	return 1;
++}
++
++symbolS *
++md_undefined_symbol (char *name)
++{
++	return 0;
++	//Hande the case where a symbol has .w or .e suffix attached.
++	//This is actually quite stupid because the operand length is the
++	//same independent of whether it is .w or .e
++	char *p;
++	symbolS *symbolP=NULL;
++
++	if ((p=strstr(name,".w")))
++	{
++		if (*(p+2) == 0)
++		{
++			*p = 0;
++			symbolP = symbol_find (name);
++			//*p = '.';
++		}
++	}
++	if ((p=strstr(name,".l")))
++	{
++		if (*(p+2) == 0)
++		{
++			*p = 0;
++			symbolP = symbol_find (name);
++			//*p = '.';
++		}
++	}
++	if ((p=strstr(name,".e")))
++	{
++		if (*(p+2) == 0)
++		{
++			*p = 0;
++			symbolP = symbol_find (name);
++			//*p = '.';
++		}
++	}
++	return symbolP;
++}
++
++
++void
++md_create_long_jump (char *ptr __attribute__((unused)),
++         addressT from_addr ATTRIBUTE_UNUSED,
++         addressT to_addr __attribute__((unused)),
++         fragS *frag __attribute__((unused)),
++         symbolS *to_symbol __attribute__((unused)))
++{
++  as_bad(_("long_jump"));
++}
++
++void
++md_create_short_jump (char *ptr __attribute__((unused)),
++          addressT from_addr __attribute__((unused)),
++          addressT to_addr ATTRIBUTE_UNUSED,
++          fragS *frag ATTRIBUTE_UNUSED,
++          symbolS *to_symbol ATTRIBUTE_UNUSED)
++{
++  as_bad(_("short_jump"));
++}
++
++/* Put number into target byte order.  */
++
++void
++md_number_to_chars (char *ptr, valueT use, int nbytes)
++{
++	number_to_chars_bigendian (ptr, use, nbytes);
++}
++
++int
++md_estimate_size_before_relax (fragS *fragP ATTRIBUTE_UNUSED,
++		segT segment_type ATTRIBUTE_UNUSED)
++{
++	as_bad (_("call to md_estimate_size_before_relax\n"));
++	return 0;
++}
++
++void
++md_convert_frag (bfd *abfd ATTRIBUTE_UNUSED,
++		segT sec ATTRIBUTE_UNUSED,
++		fragS *fragP ATTRIBUTE_UNUSED)
++{
++	as_bad (_("call to md_convert_frag\n"));
++}
++
++static
++char* match_parentheses(char* str)
++{
++	char *p;
++	int cnt=0;
++
++	p = str;
++	while (*p != 0)
++	{
++		if (*p == '(') cnt++;
++		if (*p == ')')
++		{
++			if (--cnt == 0)
++				return p;
++		}
++		p++;
++	}
++	return 0;
++}
++
++static
++int split_words(char *str, char **chunks)
++{
++	int i;
++	char *p;
++
++	p = str;
++	for (i=0;i<3;i++)
++	{
++		chunks[i] = str;
++		if (*str == 0)
++			break;
++		while(*p != 0)
++		{
++			if (*p=='(')
++			{
++				p = match_parentheses(str);
++				if (p == 0) return 0;
++			}
++			if (*p==',')
++			{
++				*p = 0;
++				p++;
++				break;
++			}
++			p++;
++		}
++		str = p;
++	}
++	return i;
++}
++
++static
++int read_arg_ptr(char *str, expressionS *exps)
++{
++	char *s;
++	char *p;
++	char c;
++	
++	if ((str[0]=='[') && (strstr(str,"]")))
++	{
++		s = str;
++		s++;
++		input_line_pointer=s;
++		
++		/* first eat up .w and .e */
++		if ((p = strstr(s,".w]")))
++		{
++			c = *p;
++			*p = 0;
++		}
++		else
++		if ((p = strstr(s,".e]")))
++		{
++			c = *p;
++			*p = 0;
++		}
++		
++		expression(exps);
++		print_expr(exps);
++		
++		/* restore c */
++		if (p)
++			*p = c;
++
++		//return default pointer len
++		if (*input_line_pointer == ']')
++		{
++			input_line_pointer+=1;
++			return 2;
++		} else
++		if ((*input_line_pointer == '.') && (*(input_line_pointer+1) == 'w'))
++		{
++			input_line_pointer+=2;
++			return 2;
++		} else
++		if ((*input_line_pointer == '.') && (*(input_line_pointer+1) == 'e'))
++		{
++			input_line_pointer+=2;
++			return 3;
++		}
++		else
++		{
++			as_bad("Expected ']' or '.e' or '.w' but found '%c'",*input_line_pointer);
++			return -1;
++		}
++	}
++	return 0;
++}
++
++
++char* toupperstr(char *str);
++
++char* toupperstr(char *str)
++{
++	for(int i = 0; str[i]; i++){
++  	str[i] = toupper(str[i]);
++	}
++	return str;
++}
++
++//expressionS last_exp;
++/* In: argument
++   Out: value
++   Modifies: type */
++static
++int read_arg(char *str, expressionS *exps)
++{
++	int ret;
++	const char *name ATTRIBUTE_UNUSED;
++	/* There is a number of addressing modes in ST8 architecture.
++     We need to properly handle each of them in order to find a proper opcode. */
++	if(!str) return(0);
++
++	//Immidate
++	if(str[0]=='#')
++	{
++		str++;
++		exps->X_md = OP_IMM;
++		input_line_pointer = str;
++		expression(exps);
++		print_expr(exps);
++		return 1;
++	}
++	
++	char strx[256];
++	strncpy(strx,str,sizeof(strx));
++	toupperstr(strx);
++
++	//decode ptr operand
++	if (str[0]=='[')
++	{
++		ret = read_arg_ptr(str, exps);
++		if (ret>0)
++		{
++			if (ret == 2)
++			{
++				exps->X_md=OP_PTRW;
++				return 1;
++			}
++			if (ret == 3)
++			{
++				exps->X_md=OP_PTRE;
++				return 1;
++			}
++		}
++		else
++			return 0;
++	}
++	//decode index operands
++	//index X
++	else if ((str[0]=='(') && (strstr(strx,"(X)")))
++	{
++		exps->X_md=OP_INDX;
++		return 1;
++	}
++	//index Y
++	else if ((str[0]=='(') && (strstr(strx,"(Y)")))
++	{
++		exps->X_md=OP_INDY;
++		return 1;
++	}
++	//offset,X
++	else if ((str[0]=='(') && (strstr(strx,",X)")))
++	{
++		str++;
++		if (str[0]=='[')
++		{
++			ret = read_arg_ptr(str, exps);
++			if (ret==2)
++			{
++				exps->X_md=OP_PTRW_X;
++				return 1;
++			}
++			if (ret==3)
++			{
++				exps->X_md=OP_PTRE_X;
++				return 1;
++			}
++			return 0;
++		}
++		str=strtok(str,",");
++		input_line_pointer=str;
++		expression(exps);
++		print_expr(exps);
++		exps->X_md=OP_OFF_X;
++		return 1;
++	}
++	//offset,Y
++	else if ((str[0]=='(') && (strstr(strx,",Y)")))
++	{
++		str++;
++		if (str[0]=='[')
++		{
++			ret = read_arg_ptr(str, exps);
++			if (ret==2)
++			{
++				exps->X_md=OP_PTRW_Y;
++				return 1;
++			}
++			if (ret==3)
++			{
++				exps->X_md=OP_PTRE_Y;
++				return 1;
++			}
++			return 0;
++		}
++		str=strtok(str,",");
++		input_line_pointer=str;
++		expression(exps);
++		print_expr(exps);
++		exps->X_md=OP_OFF_X;
++		return 1;
++	}
++	//offset,SP
++	else if ((str[0]=='(') && (strstr(strx,",SP)")))
++	{
++		str++;
++		str=strtok(str,",");
++		input_line_pointer=str;
++		expression(exps);
++		print_expr(exps);
++		exps->X_md=OP_OFF_SP;
++		return 1;
++	}
++
++	char *p;
++	char c;
++	if ((p = strstr(str,".short")))
++	{
++		c = *p;
++		*p = 0;
++		exps->X_md = OP_SHORTMEM;
++		input_line_pointer = str;
++		expression(exps);
++		print_expr(exps);
++		*p = c;
++		input_line_pointer += 6;
++		return 1;
++	}
++
++	input_line_pointer = str;
++	expression(exps);
++	print_expr(exps);
++
++	if (exps->X_op == O_register)
++	{
++		exps->X_md = OP_REGISTER;
++		return 1;
++	}
++
++	if (exps->X_op != O_illegal)
++	{
++		exps->X_md = OP_MEM;
++		return 1;
++	}
++
++	/* Can't parse an expression, notifying caller about that. */
++	return(0);
++}
++
++static
++int read_args(char *str, expressionS exps[])
++{
++	char *chunks[3];
++	int count = split_words(str, chunks);
++	int i;
++	for(i = 0; i < count; i++)
++	{
++		int ret = read_arg(chunks[i], &(exps[i]));
++		if(!ret) as_bad("Invalid operand: %s", chunks[i]);
++	}
++	return(count);
++}
++
++static
++void stm8_bfd_out(struct stm8_opcodes_s op, expressionS exp[], int count, char *frag)
++{
++	int i;
++
++	for(i = 0; i < count; i++)
++	{
++		int where = frag - frag_now->fr_literal;
++
++		if (exp[i].X_op != O_illegal)
++		{
++			switch(op.constraints[i])
++			{
++			case ST8_EXTMEM:
++			case ST8_EXTOFF_X:
++			case ST8_EXTOFF_Y:
++				fix_new_exp(frag_now, where, 3, &exp[i], FALSE, BFD_RELOC_24);
++				bfd_put_bits(0xaaaaaaaa, frag, 24, true);
++				frag+=3;
++				break;
++			case ST8_LONGPTRW_Y:
++			case ST8_LONGPTRW_X:
++			case ST8_LONGPTRW:
++			case ST8_LONGPTRE:
++			case ST8_LONGOFF_Y:
++			case ST8_LONGOFF_X:
++			case ST8_WORD:
++			case ST8_LONGMEM:
++				fix_new_exp(frag_now, where, 2, &exp[i], FALSE, BFD_RELOC_16);
++				bfd_put_bits(0xaaaaaaaa, frag, 16, true);
++				frag+=2;
++				break;
++			case ST8_SHORTPTRW_Y:
++			case ST8_SHORTPTRW_X:
++			case ST8_SHORTPTRW:
++			case ST8_SHORTOFF_Y:
++			case ST8_SHORTOFF_X:
++			case ST8_SHORTOFF_SP:
++			case ST8_BYTE:
++			case ST8_SHORTMEM:
++				fix_new_exp(frag_now, where, 1, &exp[i], FALSE, BFD_RELOC_8);
++				bfd_put_bits(0xaaaaaaaa, frag, 8, true);
++				frag+=1;
++				break;
++			case ST8_PCREL:
++				fix_new_exp(frag_now, where, 1, &exp[i], TRUE, BFD_RELOC_8_PCREL);
++				bfd_put_bits(0xaaaaaaaa, frag, 8, true);
++				frag+=1;
++				break;
++			case ST8_BIT_0:
++				fix_new_exp(frag_now, where-3, 1, &exp[i], FALSE, BFD_RELOC_STM8_BIT_FLD);
++				break;
++			default:
++				break;
++			}
++		}
++	}
++}
++
++static
++int cmpspec(stm8_addr_mode_t addr_mode[], expressionS exps[], int count)
++{
++	int i, ret = 0;
++	unsigned int value;
++	stm8_operand_t operand;
++
++	for(i = 0; i < count; i++) {
++		operand = exps[i].X_md;
++		if (!addr_mode || !operand)
++			continue; // End
++		if (exps[i].X_op == O_constant)
++			value = exps[i].X_add_number;
++		else
++			value = -1;
++
++		switch (operand)
++		{
++		case OP_REGISTER:
++			if (addr_mode[i] == (stm8_addr_mode_t)exps[i].X_add_number)
++				continue;
++			break;
++		case OP_IMM:
++			if (addr_mode[i] == ST8_BYTE)
++				continue;
++			if (addr_mode[i] == ST8_WORD)
++				continue;
++			if (addr_mode[i] == ST8_BIT_0)
++					continue;
++			break;
++		case OP_INDX:
++			if (addr_mode[i] == ST8_INDX)
++				continue;
++			break;
++		case OP_INDY:
++			if (addr_mode[i] == ST8_INDY)
++				continue;
++			break;
++		case OP_OFF_X:
++			if (addr_mode[i] == ST8_SHORTOFF_X)
++				if (value < 0x100)
++					continue;
++			if (addr_mode[i] == ST8_LONGOFF_X)
++				continue;
++			if (addr_mode[i] == ST8_EXTOFF_X)
++				continue;
++			break;
++		case OP_OFF_Y:
++			if (addr_mode[i] == ST8_SHORTOFF_Y)
++				if (value < 0x100)
++					continue;
++			if (addr_mode[i] == ST8_LONGOFF_Y)
++				continue;
++			if (addr_mode[i] == ST8_EXTOFF_Y)
++				continue;
++			break;
++		case OP_OFF_SP:
++			if (addr_mode[i] == ST8_SHORTOFF_SP)
++				continue;
++			break;
++		case OP_PTRW:
++			if (addr_mode[i] == ST8_SHORTPTRW)
++				if (value < 0x100)
++					continue;
++			if (addr_mode[i] == ST8_LONGPTRW)
++				continue;
++			break;
++		case OP_PTRW_X:
++			if (addr_mode[i] == ST8_SHORTPTRW_X)
++				if (value < 0x100)
++					continue;
++			if (addr_mode[i] == ST8_LONGPTRW_X)
++					continue;
++			break;
++		case OP_PTRW_Y:
++			if (addr_mode[i] == ST8_SHORTPTRW_Y)
++				if (value < 0x100)
++					continue;
++			if (addr_mode[i] == ST8_LONGPTRW_Y)
++					continue;
++			break;
++		case OP_PTRE:
++			if (addr_mode[i] == ST8_LONGPTRE)
++				continue;
++			break;
++		case OP_PTRE_X:
++			if (addr_mode[i] == ST8_LONGPTRE_X)
++				continue;
++			break;
++		case OP_PTRE_Y:
++			if (addr_mode[i] == ST8_LONGPTRE_Y)
++				continue;
++			break;
++		case OP_MEM:
++			if (addr_mode[i] == ST8_PCREL)
++				continue;
++			if (addr_mode[i] == ST8_EXTMEM)
++				continue;
++			if (addr_mode[i] == ST8_LONGMEM)
++				continue;
++			break;
++		case OP_SHORTMEM:
++			if (addr_mode[i] == ST8_SHORTMEM)
++				continue;
++			break;
++		case OP_ILLEGAL:
++			as_fatal(_("BUG: OP_ILLEGAL"));
++			return 1;
++		}
++
++//		if (operand == ST8_DIRECT)
++//		{
++//			if (addr_mode[i] == ST8_SHORTMEM) continue;
++//		}
++
++		//not a match
++		ret++;
++	}
++	return(ret);
++}
++
++/* This is the guts of the machine-dependent assembler.  STR points to a
++   machine dependent instruction.  This function is supposed to emit
++   the frags/bytes it assembles to.  */
++
++void
++md_assemble (char *str)
++{
++	char op[11];
++	char *t = input_line_pointer;
++	char *str_orig = strdup(str);
++	str = skip_space(extract_word(str, op, sizeof(op)));
++	//stm8_operand_t spec[3];
++	expressionS exps[3];
++	//memset(spec, 0, sizeof(stm8_operand_t) * 3);
++	memset(exps, 0, sizeof(expressionS) * 3);
++
++	int count = read_args(str, exps);
++	struct stm8_opcodes_s *opcode = (struct stm8_opcodes_s *)hash_find(stm8_hash, op);
++
++	if (opcode == NULL) {
++		as_bad (_("unknown opcode `%s'"), op);
++		return;
++	}
++
++	int i;
++	for(i = 0; opcode[i].name != NULL; i++)
++	{
++		if (!strcmp(op, opcode[i].name))
++		if(!cmpspec(opcode[i].constraints, exps, count))
++		{
++			int insn_size = stm8_compute_insn_size(opcode[i]);
++			char *frag = frag_more(insn_size);
++			int opcode_length = stm8_opcode_size(opcode[i].bin_opcode);
++			bfd_put_bits(opcode[i].bin_opcode, frag, opcode_length * 8, true);
++			frag += opcode_length;
++			stm8_bfd_out(opcode[i], exps, count, frag);
++			break;
++		}
++	}
++	if(!opcode[i].name)
++		as_bad("Invalid instruction: %s", str_orig);
++	input_line_pointer = t;
++	free(str_orig);
++}
++
++
++/* If you define this macro, it should return the position from which
++   the PC relative adjustment for a PC relative fixup should be made.
++   On many processors, the base of a PC relative instruction is the
++   next instruction, so this macro would return the length of an
++   instruction, plus the address of the PC relative fixup.  The latter
++   can be calculated as fixp->fx_where +
++   fixp->fx_frag->fr_address.  */
++
++long
++md_pcrel_from_section (fixS *fixp, segT sec)
++{
++	if (fixp->fx_addsy != (symbolS *) NULL
++			&& (!S_IS_DEFINED (fixp->fx_addsy)
++					|| (S_GET_SEGMENT (fixp->fx_addsy) != sec)))
++		return 0;
++	
++	return fixp->fx_size + fixp->fx_where + fixp->fx_frag->fr_address;
++	//return fixp->fx_frag->fr_address+fixp->fx_frag->fr_fix;
++	return fixp->fx_frag->fr_address + fixp->fx_where;
++}
++
++int stm8_need_index_operator()
++{
++	return 1;
++}
++
++operatorT stm8_operator (const char *name ATTRIBUTE_UNUSED, unsigned int operands ATTRIBUTE_UNUSED, char *pc ATTRIBUTE_UNUSED)
++{
++	return O_absent;
++}
++
++void stm8_check_label (symbolS *labelsym ATTRIBUTE_UNUSED)
++{
++}
++
++extern void stm8_symbol_new_hook (symbolS * labelsym)
++{
++	char* name;
++	char* p;
++	int value;
++
++	name = (char*)S_GET_NAME(labelsym);
++	if ((p=strstr(name,".b")))
++	{
++		if (*(p+2)==0)
++		{
++			*p=0;
++			S_SET_NAME(labelsym,name);
++			value=1;
++			symbol_set_tc(labelsym, &value);
++		}
++	}
++}
+diff --git a/gas/config/tc-stm8.h b/gas/config/tc-stm8.h
+new file mode 100644
+index 0000000000..066e72ea43
+--- /dev/null
++++ b/gas/config/tc-stm8.h
+@@ -0,0 +1,97 @@
++/* This file is tc-stm8.h
++   Copyright (C) 1999-2016 Free Software Foundation, Inc.
++
++   Written by Ake Rehnman 2017-02-21,
++   ake.rehnman (at) gmail dot com
++
++   This file is part of GAS, the GNU Assembler.
++
++   GAS is free software; you can redistribute it and/or modify
++   it under the terms of the GNU General Public License as published by
++   the Free Software Foundation; either version 3, or (at your option)
++   any later version.
++
++   GAS is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++   GNU General Public License for more details.
++
++   You should have received a copy of the GNU General Public License
++   along with GAS; see the file COPYING.  If not, write to the Free
++   Software Foundation, 51 Franklin Street - Fifth Floor, Boston, MA
++   02110-1301, USA.  */
++
++/* By convention, you should define this macro in the `.h' file.  For
++   example, `tc-m68k.h' defines `TC_M68K'.  You might have to use this
++   if it is necessary to add CPU specific code to the object format
++   file.  */
++#define TC_STM8
++
++/* This macro is the BFD target name to use when creating the output
++   file.  This will normally depend upon the `OBJ_FMT' macro.  */
++#define TARGET_FORMAT "elf32-stm8"
++
++/* This macro is the BFD architecture to pass to `bfd_set_arch_mach'.  */
++#define TARGET_ARCH bfd_arch_stm8
++
++/* This macro is the BFD machine number to pass to
++   `bfd_set_arch_mach'.  If it is not defined, GAS will use 0.  */
++#define TARGET_MACH 0
++
++/* You should define this macro to be non-zero if the target is big
++   endian, and zero if the target is little endian.  */
++#define TARGET_BYTES_BIG_ENDIAN 0
++
++/* If you define this macro, GAS will warn about the use of
++   nonstandard escape sequences in a string.  */
++#define ONLY_STANDARD_ESCAPES
++
++#define DIFF_EXPR_OK    /* .-foo gets turned into PC relative relocs */
++
++/* If you define this macro, it should return the offset between the
++   address of a PC relative fixup and the position from which the PC
++   relative adjustment should be made.  On many processors, the base
++   of a PC relative instruction is the next instruction, so this
++   macro would return the length of an instruction.  */
++#define MD_PCREL_FROM_SECTION(FIX, SEC) md_pcrel_from_section (FIX, SEC)
++extern long md_pcrel_from_section (struct fix *, segT);
++
++#define NEED_INDEX_OPERATOR
++extern int stm8_need_index_operator (void);
++//#define md_need_index_operator stm8_need_index_operator
++
++#define NUMBERS_WITH_SUFFIX 1
++
++//#define UNDEFINED_DIFFERENCE_OK
++//#define TC_VALIDATE_FIX_SUB(fix, seg) stm8_validate_fix_sub (fix)
++//extern int stm8_validate_fix_sub (struct fix *);
++
++//#define STM8_FIXUP 128
++
++extern operatorT stm8_operator (const char *name, unsigned int operands, char *);
++#define md_operator stm8_operator
++
++extern void stm8_check_label (symbolS *labelsym);
++//#define tc_check_label(ls)	stm8_check_label (ls)
++
++#define tc_symbol_new_hook(sym) stm8_symbol_new_hook (sym)
++extern void stm8_symbol_new_hook (symbolS * labelsym);
++
++#define TC_SYMFIELD_TYPE int
++
++#define md_register_arithmetic 0
++
++
++//int split_words(char *str, char **chunks);
++//int getnumber(const char *str, int *out);
++//int gethex(const char *str, int *out);
++//int getnum(const char *str, int *out);
++//int read_arg(char *str, expressionS *exps);
++//int read_args(char *str, expressionS exps[]);
++//unsigned int bytes_count(unsigned int number);
++//int compute_insn_size(struct stm8_opcodes_s opcode);
++//int cmpspec(stm8_addr_mode_t addr_mode[], expressionS exps[], int count);
++//void stm8_bfd_out(struct stm8_opcodes_s op, expressionS exp[], int count, char *frag);
++//char* match_parentheses(char* str);
++//int read_arg_ptr(char *str, expressionS *exps);
++//int is_ptr_w(stm8_addr_mode_t type);
+diff --git a/gas/configure.tgt b/gas/configure.tgt
+index afe4e0608c..81770e21ec 100644
+--- a/gas/configure.tgt
++++ b/gas/configure.tgt
+@@ -481,6 +481,8 @@ case ${generic_target} in
+ 
+   z8k-*-coff | z8k-*-sim)		fmt=coff ;;
+ 
++  stm8-*-elf*)		fmt=elf ;;
++
+   *-*-aout | *-*-scout)			fmt=aout ;;
+   *-*-cloudabi*)			fmt=elf ;;
+   *-*-dragonfly*)			fmt=elf em=dragonfly ;;
+@@ -497,7 +499,7 @@ case ${generic_target} in
+ esac
+ 
+ case ${cpu_type} in
+-  aarch64 | alpha | arm | i386 | ia64 | microblaze | mips | ns32k | or1k | or1knd | pdp11 | ppc | riscv | sparc | z80 | z8k)
++  aarch64 | alpha | arm | i386 | ia64 | microblaze | mips | ns32k | or1k | or1knd | pdp11 | ppc | riscv | sparc | z80 | z8k | stm8)
+     bfd_gas=yes
+     ;;
+ esac
+diff --git a/gdb/configure.tgt b/gdb/configure.tgt
+index fb8014a8e8..e128398891 100644
+--- a/gdb/configure.tgt
++++ b/gdb/configure.tgt
+@@ -744,6 +744,11 @@ xtensa*-*-linux*)	gdb_target=linux
+ 	gdb_target_obs="xtensa-linux-tdep.o symfile-mem.o linux-tdep.o"
+ 	build_gdbserver=yes
+ 	;;
++stm8-*-*)
++	# Target: STM8
++	gdb_target_obs="stm8-tdep.o"
++	#gdb_sim=../sim/stm8/libsim.a
++	;;
+ 
+ esac
+ 
+diff --git a/gdb/stm8-tdep.c b/gdb/stm8-tdep.c
+new file mode 100644
+index 0000000000..30b345cfd7
+--- /dev/null
++++ b/gdb/stm8-tdep.c
+@@ -0,0 +1,1130 @@
++/* Target-dependent code for STM8, for GDB.
++   Written by Ake Rehnman 2017-02-21,
++   ake.rehnman (at) gmail dot com
++
++   Copyright (C) 1996-2016 Free Software Foundation, Inc.
++
++   This file is part of GDB.
++
++   This program is free software; you can redistribute it and/or modify
++   it under the terms of the GNU General Public License as published by
++   the Free Software Foundation; either version 3 of the License, or
++   (at your option) any later version.
++
++   This program is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++   GNU General Public License for more details.
++
++   You should have received a copy of the GNU General Public License
++   along with this program.  If not, see <http://www.gnu.org/licenses/>.  */
++
++#include "defs.h"
++#include "frame.h"
++#include "frame-unwind.h"
++#include "frame-base.h"
++#include "trad-frame.h"
++#include "gdbcmd.h"
++#include "gdbcore.h"
++#include "gdbtypes.h"
++#include "inferior.h"
++#include "symfile.h"
++#include "arch-utils.h"
++#include "regcache.h"
++#include "dis-asm.h"
++#include "objfiles.h"
++#include "target-descriptions.h"
++#include <algorithm>
++#include "dwarf2-frame.h"
++
++enum stm8_regnum
++{
++  STM8_PC_REGNUM,
++  STM8_A_REGNUM,
++  STM8_X_REGNUM,
++  STM8_Y_REGNUM,
++  STM8_SP_REGNUM,
++  STM8_CC_REGNUM,
++  //pseudo register
++  STM8_FP_REGNUM
++};
++
++static const char *stm8_register_names[] =
++{
++  "pc", "a",   "x",  "y",  "sp", "cc"
++};
++
++struct stm8_soft_reg
++{
++  const char *name;
++  CORE_ADDR   addr;
++};
++
++unsigned int stm8_debug;
++
++#define STM8_NUM_REGS ARRAY_SIZE (stm8_register_names)
++
++struct gdbarch_tdep
++{
++  struct stm8_soft_reg fp_reg;
++};
++
++enum insn_return_kind {
++  RETURN_RET,
++  RETURN_RETF,
++  RETURN_IRET
++};
++
++static int
++stm8_convert_register_p (struct gdbarch *gdbarch, int regnum,
++		struct type *type)
++{
++	struct gdbarch_tdep *tdep = gdbarch_tdep (gdbarch);
++
++	if ((regnum == STM8_FP_REGNUM) && (TYPE_LENGTH(type) > 2))
++	{
++		return 1;
++	}
++	return 0;
++}
++
++/* Read a value of type TYPE from register REGNUM in frame FRAME, and
++   return its contents in TO.  */
++
++static int
++stm8_register_to_value (struct frame_info *frame, int regnum,
++		struct type *type, gdb_byte *to,
++		int *optimizedp, int *unavailablep)
++{
++	struct type *fpreg_type = register_type (get_frame_arch (frame),
++			STM8_FP_REGNUM);
++
++	/* We only support ptr values.  */
++	if ((TYPE_CODE (type) != TYPE_CODE_PTR) && (regnum != STM8_FP_REGNUM) && (TYPE_LENGTH(type) >= TYPE_LENGTH(fpreg_type)))
++	{
++		warning (_("Conversion failure in stm8_register_to_value: regnum = %d "), regnum);
++		*optimizedp = *unavailablep = 0;
++		return 0;
++	}
++
++	/* Convert to TYPE.  */
++
++	memset(to,0,TYPE_LENGTH(type));
++
++	if (!get_frame_register_bytes (frame, regnum, 0, TYPE_LENGTH (fpreg_type),
++			to+TYPE_LENGTH(type)-TYPE_LENGTH(fpreg_type), optimizedp, unavailablep))
++		return 0;
++
++	*optimizedp = *unavailablep = 0;
++	return 1;
++}
++
++
++/* Look in the symbol table for the address of a pseudo register
++   in memory.  If we don't find it, pretend the register is not used
++   and not available.  */
++static void
++stm8_get_register_info (struct stm8_soft_reg *reg, const char *name)
++{
++	struct bound_minimal_symbol msymbol;
++
++	msymbol = lookup_minimal_symbol (name, NULL, NULL);
++	if (msymbol.minsym)
++	{
++		reg->addr = BMSYMBOL_VALUE_ADDRESS (msymbol);
++		reg->name = xstrdup (name);
++	}
++	else
++	{
++		reg->name = 0;
++		reg->addr = 0;
++	}
++}
++
++static void
++stm8_initialize_soft_register_info(struct gdbarch_tdep *tdep)
++{
++	stm8_get_register_info(&tdep->fp_reg, "_fp_");
++	if ((tdep->fp_reg.name == 0) && (symfile_objfile))
++	{
++		warning (_("No frame soft register found in the symbol table (_fp_).\n"
++				"Stack backtrace will not work.\n"));
++	}
++}
++
++static const char *
++stm8_register_name (struct gdbarch *gdbarch, int regnum)
++{
++	if (regnum >= 0 && regnum < STM8_NUM_REGS)
++		return stm8_register_names[regnum];
++	if (regnum == STM8_FP_REGNUM)
++		return "fp";
++	return NULL;
++}
++
++static struct type *
++stm8_register_type (struct gdbarch *gdbarch, int regnum)
++{
++	struct gdbarch_tdep *tdep = gdbarch_tdep (gdbarch);
++
++	switch (regnum)
++	{
++	case STM8_PC_REGNUM:
++		return builtin_type (gdbarch)->builtin_uint32;
++	case STM8_SP_REGNUM:
++		return builtin_type (gdbarch)->builtin_uint16;
++	case STM8_X_REGNUM:
++	case STM8_Y_REGNUM:
++		return builtin_type (gdbarch)->builtin_uint16;
++	case STM8_FP_REGNUM:
++		return builtin_type (gdbarch)->builtin_uint16;
++	default:
++		return builtin_type (gdbarch)->builtin_uint8;
++	}
++}
++
++static enum register_status
++stm8_pseudo_register_read (struct gdbarch *gdbarch, struct regcache *regcache,
++		int regnum, gdb_byte *buf)
++{
++	enum register_status status;
++	struct gdbarch_tdep *tdep = gdbarch_tdep (gdbarch);
++	enum bfd_endian byte_order = gdbarch_byte_order (gdbarch);
++	int regsize = 2;
++
++	switch (regnum)
++	{
++	case STM8_FP_REGNUM:
++		/* Fetch a soft register: translate into a memory read.  */
++		memset (buf, 0, regsize);
++		if (tdep->fp_reg.name)
++		{
++			target_read_memory (tdep->fp_reg.addr, buf, 2);
++		}
++		return REG_VALID;
++	default:
++		internal_error (__FILE__, __LINE__, _("invalid regnum"));
++		return REG_UNAVAILABLE;
++	}
++}
++
++static void
++stm8_pseudo_register_write (struct gdbarch *gdbarch, struct regcache *regcache,
++		int regnum, const gdb_byte *buf)
++{
++	enum register_status status;
++	enum bfd_endian byte_order = gdbarch_byte_order (target_gdbarch ());
++	struct gdbarch_tdep *tdep = gdbarch_tdep (gdbarch);
++	const int regsize = 2;
++
++	switch (regnum)
++	{
++	case STM8_FP_REGNUM:
++		/* Store a soft register: translate into a memory write.  */
++		if (tdep->fp_reg.name)
++		{
++			target_write_memory (tdep->fp_reg.addr, buf, 2);
++		}
++		return;
++	default:
++		internal_error (__FILE__, __LINE__, _("invalid regnum"));
++		return;
++	}
++}
++
++
++struct stm8_frame_cache
++{
++	/* Base address.  */
++	CORE_ADDR base;
++	CORE_ADDR pc;
++
++	/* Do we have a frame?  */
++	int frameless_p;
++
++	/* Frame size.  */
++	int framesize;
++
++	/* Frame size.  */
++	int stackadj;
++
++	/* Frame register.  */
++	int fp_regnum;
++
++	/* Return instruction */
++	enum insn_return_kind return_kind;
++
++	/* Offsets to saved registers.  */
++	int register_offsets[STM8_NUM_REGS];
++
++	/* Table of saved registers.  */
++	struct trad_frame_saved_reg *saved_regs;
++};
++
++static const unsigned char *
++stm8_breakpoint_from_pc (struct gdbarch *gdbarch, CORE_ADDR *pcptr,
++			    int *lenptr)
++{
++	static gdb_byte stm8_breakpoint[] = { 0x8b };
++
++  *lenptr = sizeof (stm8_breakpoint);
++  return stm8_breakpoint;
++}
++
++/* Implement the breakpoint_kind_from_pc gdbarch method.  */
++#if 0
++static int
++stm8_breakpoint_kind_from_pc (struct gdbarch *gdbarch, CORE_ADDR *pcptr)
++{
++	CORE_ADDR pc = *pcptr;
++
++	if (stm8_debug)
++		fprintf_unfiltered (gdb_stdlog, "stm8_breakpoint_kind_from_pc called %8.8lx\n",pc);
++
++	return 1;
++}
++
++static const gdb_byte *
++stm8_sw_breakpoint_from_kind (struct gdbarch *gdbarch, int kind, int *size)
++{
++	if (stm8_debug)
++		fprintf_unfiltered (gdb_stdlog, "stm8_sw_breakpoint_from_kind called\n");
++
++	enum bfd_endian byte_order_for_code = gdbarch_byte_order_for_code (gdbarch);
++
++	static gdb_byte stm8_breakpoint[] = { 0x8b };
++
++	*size = 1;
++
++	return stm8_breakpoint;
++}
++
++#endif
++
++static int dwarf2_to_reg_map[6] =
++{ 0  /* r0  */,   1  /* r1  */,   2  /* r2  */,   3  /* r3  */,  /*  0- 3 */
++		4  /* r4  */,   5  /* r5  */
++};
++
++static int
++stm8_dwarf2_reg_to_regnum (struct gdbarch *gdbarch, int reg)
++{
++	if (stm8_debug)
++		fprintf_unfiltered (gdb_stdlog, "stm8_dwarf2_reg_to_regnum called\n");
++	if (reg >= 0 && reg < sizeof (dwarf2_to_reg_map))
++		return dwarf2_to_reg_map[reg];
++	if (reg == 31)
++		return STM8_FP_REGNUM;
++	return -1;
++}
++
++static void
++stm8_write_pc (struct regcache *regcache, CORE_ADDR pc)
++{
++	if (stm8_debug)
++		fprintf_unfiltered (gdb_stdlog, "stm8_write_pc called\n");
++	regcache_cooked_write_unsigned (regcache, STM8_PC_REGNUM, pc);
++}
++
++static CORE_ADDR
++stm8_unwind_pc (struct gdbarch *gdbarch, struct frame_info *next_frame)
++{
++	gdb_byte buf[4];
++	CORE_ADDR pc;
++
++	struct gdbarch_tdep *tdep = gdbarch_tdep (gdbarch);
++	frame_unwind_register (next_frame, STM8_PC_REGNUM, buf);
++	pc = extract_typed_address (buf, builtin_type (gdbarch)->builtin_func_ptr);
++	if (stm8_debug)
++		fprintf_unfiltered (gdb_stdlog, "stm8_unwind_pc called: pc=%8.8lx\n",pc);
++	return pc;
++}
++
++static CORE_ADDR
++stm8_unwind_sp (struct gdbarch *gdbarch, struct frame_info *next_frame)
++{
++	ULONGEST sp;
++
++	sp = frame_unwind_register_unsigned (next_frame, STM8_SP_REGNUM);
++	sp = gdbarch_addr_bits_remove (gdbarch, sp);
++	if (stm8_debug)
++		fprintf_unfiltered (gdb_stdlog, "stm8_unwind_sp called: sp=%8.8llx\n",sp);
++	return sp;
++}
++
++#if 0
++static struct value *
++stm8_dwarf2_prev_register (struct frame_info *this_frame,
++		void **this_cache, int regnum)
++{
++	CORE_ADDR pc;
++
++	switch (regnum)
++	{
++	    case STM8_PC_REGNUM:
++	      pc = frame_unwind_register_unsigned (this_frame, AARCH64_PC_REGNUM);
++	      return frame_unwind_got_constant (this_frame, regnum, lr);
++
++	default:
++		internal_error (__FILE__, __LINE__,
++				_("Unexpected register %d"), regnum);
++	}
++}
++
++static void
++stm8_dwarf2_frame_init_reg (struct gdbarch *gdbarch, int regnum,
++		struct dwarf2_frame_state_reg *reg,
++		struct frame_info *this_frame)
++{
++	switch (regnum)
++	{
++	case STM8_PC_REGNUM:
++		reg->how = DWARF2_FRAME_REG_FN;
++		reg->loc.fn = stm8_dwarf2_prev_register;
++		break;
++	case STM8_SP_REGNUM:
++		reg->how = DWARF2_FRAME_REG_CFA;
++		break;
++	}
++}
++#endif
++
++/* Assuming THIS_FRAME is a dummy, return the frame ID of that
++   dummy frame.  The frame ID's base needs to match the TOS value
++   saved by save_dummy_frame_tos(), and the PC match the dummy frame's
++   breakpoint.  */
++
++static struct frame_id
++stm8_dummy_id (struct gdbarch *gdbarch, struct frame_info *this_frame)
++{
++	fprintf_unfiltered (gdb_stdlog, "stm8_dummy_id called\n");
++
++	return frame_id_build
++			(get_frame_register_signed (this_frame, STM8_SP_REGNUM),
++					get_frame_pc (this_frame));
++}
++
++
++/* Allocate and initialize a frame cache.  */
++
++static struct stm8_frame_cache *
++stm8_alloc_frame_cache (void)
++{
++	struct stm8_frame_cache *cache;
++
++	cache = FRAME_OBSTACK_ZALLOC (struct stm8_frame_cache);
++
++	//  /* Base address.  */
++	cache->base = 0;
++	cache->pc = 0;
++
++	/* Frameless until proven otherwise.  */
++	cache->frameless_p = 1;
++
++	return cache;
++}
++
++/* Figure out what return type this function has.  */
++static enum insn_return_kind
++stm8_get_return_insn (CORE_ADDR pc)
++{
++	const char *name;
++	CORE_ADDR func_addr, func_end, stop;
++
++	if (find_pc_partial_function (pc, &name, &func_addr, &func_end))
++	{
++		gdb_byte buf[1];
++		//func_end is pointing to last insn+1 ???
++		if (!target_read_code (func_end-1, buf, sizeof (buf)))
++		{
++			switch (buf[0])
++			{
++			case 0x81:
++				return RETURN_RET;
++			case 0x87:
++				return RETURN_RETF;
++			case 0x80:
++				return RETURN_IRET;
++			}
++		}
++	}
++
++	//defaut to RET
++	if (stm8_debug)
++		fprintf_unfiltered(gdb_stdlog, "WARNING: stm8_get_return_insn: No return instruction found in function %s start_addr = %8.8lx end_addr = %8.8lx\n", name, func_addr, func_end);
++	return RETURN_RET;
++}
++
++/* Find the start of this function.  */
++static CORE_ADDR
++stm8_analyze_prologue (struct gdbarch *gdbarch, CORE_ADDR pc,
++		CORE_ADDR current_pc,
++		struct stm8_frame_cache *cache)
++{
++	const char *name;
++	CORE_ADDR func_addr, func_end, stop;
++	unsigned long insn;
++	int done;
++	gdb_byte buf[4];
++
++	if (stm8_debug)
++		fprintf_unfiltered(gdb_stdlog, "stm8_analyze_prologue called (pc=%8.8lx current_pc=%8.8lx)\n",pc,current_pc);
++
++	/* Initialize info about frame.  */
++	cache->framesize = 0;
++	cache->fp_regnum = STM8_FP_REGNUM;
++	cache->frameless_p = 1;
++	cache->stackadj = 0;
++
++	/* Find the start of this function.  */
++	find_pc_partial_function (pc, &name, &func_addr, &func_end);
++	if (func_addr < pc)
++		pc = func_addr;
++
++	if (current_pc < pc)
++		return current_pc;
++
++	/* Start decoding the prologue.  We start by checking two special cases:
++
++     1. We're about to return
++     2. We're at the first insn of the prologue.
++
++     If we're about to return, our frame has already been deallocated.
++     If we are stopped at the first instruction of a prologue,
++     then our frame has not yet been set up.  */
++
++	/* Get the first insn from memory.  */
++	if (target_read_code (pc, buf, sizeof (buf)))
++		return current_pc;
++
++	//RET?
++	if (buf[0] == 0x81)
++	{
++		if (stm8_debug)
++			fprintf_unfiltered (gdb_stdlog, "stm8_analyze_prologue: current_pc is RTS so we dont have a frame!\n");
++		return pc;
++	}
++
++	/* Start at beginning of function and analyze until we get to the
++     current pc, or the end of the function, whichever is first.  */
++	stop = (current_pc < func_end ? current_pc : func_end);
++
++	if (stm8_debug)
++		fprintf_unfiltered (gdb_stdlog, "stm8_analyze_prologue: name=%s, func_addr=%s, stop=%s\n",
++				name, paddress (gdbarch, func_addr),
++				paddress (gdbarch, stop));
++
++	/* scan the prologue */
++	pc = func_addr;
++	done = 0;
++	while ((pc < stop) && !done)
++	{
++		if (target_read_code (pc, buf, sizeof (buf)))
++			return current_pc;
++
++		insn = buf[0];
++		if (buf[0] == 0x90)
++			insn = (insn << 8) + buf[1];
++
++		switch (insn)
++		{
++		case 0x3b:
++			//PUSH extmem
++			cache->framesize += 1;
++			pc += 3;
++			break;
++		case 0x9096:
++			//LDW Y, SP
++			pc += 2;
++			break;
++		case 0x90cf:
++			//LDW extmem, Y
++			pc += 4;
++			cache->frameless_p = 0;
++			break;
++		case 0x52:
++			//SUB SP,#xx?
++			cache->framesize += buf[1];
++			pc+=2;
++			break;
++		case 0x88:
++			//PUSH A?
++			cache->framesize += 1;
++			pc++;
++			break;
++		case 0x89:
++			//PUSH X?
++			cache->framesize += 2;
++			pc++;
++			break;
++		case 0x9089:
++			//PUSH Y?
++			cache->framesize += 2;
++			pc+=2;
++			break;
++		default:
++			done = 1;
++		}
++
++	}
++
++	if (stm8_debug)
++		if (cache->frameless_p)
++			fprintf_unfiltered (gdb_stdlog, "stm8_analyze_prologue: this function is frameless! No pc adjustment was done.\n");
++
++	return pc;
++}
++
++/* Return PC of first real instruction of the function starting at
++   START_PC.  */
++
++static CORE_ADDR
++stm8_skip_prologue (struct gdbarch *gdbarch, CORE_ADDR start_pc)
++{
++	if (stm8_debug)
++		fprintf_unfiltered (gdb_stdlog, "stm8_skip_prologue called: start_pc=%8.8lx\n", start_pc);
++
++	struct symtab_and_line sal;
++	CORE_ADDR func_start, func_end, ostart_pc;
++	struct stm8_frame_cache cache;
++
++	/* This is the preferred method, find the end of the prologue by
++     using the debugging information.  Debugging info does not always
++     give the right answer since parameters are stored on stack after this.
++     Always analyze the prologue.  */
++	if (find_pc_partial_function (start_pc, NULL, &func_start, &func_end))
++	{
++		sal = find_pc_line (func_start, 0);
++
++		if (sal.end < func_end
++				&& start_pc <= sal.end)
++			start_pc = sal.end;
++	}
++
++	ostart_pc = stm8_analyze_prologue (gdbarch, func_start, 0xffffffffUL,
++			&cache);
++
++	if (stm8_debug)
++		fprintf_unfiltered (gdb_stdlog, "stm8_skip_prologue: start_pc=%8.8lx ostart_pc=%8.8lx\n",start_pc,ostart_pc);
++
++	if (ostart_pc > start_pc)
++		return ostart_pc;
++	return start_pc;
++}
++
++/* Normal frames.
++
++  The STM8 frame is typically:
++
++     args
++     return lo addr
++     return hi addr
++     prev fp lo
++     prev fp hi
++     locals <- fp
++sp-> empty
++ */
++
++static struct stm8_frame_cache *
++stm8_frame_cache (struct frame_info *next_frame, void **this_cache)
++{
++	if (stm8_debug)
++		fprintf_unfiltered (gdb_stdlog, "stm8_frame_cache called (next_frame=%p)\n",next_frame);
++
++	struct stm8_frame_cache *cache;
++	struct gdbarch *gdbarch = get_frame_arch (next_frame);
++	CORE_ADDR start_pc, current_pc, current_sp, fp;
++	int retsize;
++
++	if (*this_cache)
++		return (struct stm8_frame_cache *) *this_cache;
++
++	cache = stm8_alloc_frame_cache ();
++	*this_cache = cache;
++
++	cache->saved_regs = trad_frame_alloc_saved_regs (next_frame);
++
++	start_pc = get_frame_func (next_frame);
++
++	cache->return_kind = stm8_get_return_insn (start_pc);
++
++	current_pc = get_frame_pc (next_frame);
++	current_sp = get_frame_sp (next_frame);
++
++	/* Analyze the function prologue.  */
++	if (start_pc != 0)
++		stm8_analyze_prologue (gdbarch, start_pc, current_pc,
++				(struct stm8_frame_cache *) *this_cache);
++
++	/* get our fp by unwinding it from the next frame
++	 * if we don't have a fp we use sp instead but if there
++	 * are arguments on the stack unwinding will be
++	 * unpredictable.
++	 */
++	//fp = frame_unwind_register_unsigned (next_frame, cache->fp_regnum);
++	fp = get_frame_register_unsigned (next_frame, cache->fp_regnum);
++	if (fp == 0)
++	{
++		cache->base = 0;
++		cache->frameless_p = 1;
++		//return (struct stm8_frame_cache *) (*this_cache);
++	}
++
++	switch (cache->return_kind)
++	{
++	case RETURN_RET:
++		retsize = 2;
++		break;
++	case RETURN_RETF:
++		retsize = 3;
++		break;
++	case RETURN_IRET:
++		retsize = 9;
++		break;
++	}
++
++	if (cache->frameless_p)
++	{
++		cache->base = current_sp + cache->framesize;
++		if (cache->return_kind == RETURN_IRET)
++			cache->saved_regs[STM8_PC_REGNUM].addr = cache->base + 1 + 6;
++		else
++			cache->saved_regs[STM8_PC_REGNUM].addr = cache->base + 1;
++		trad_frame_set_value (cache->saved_regs,
++				STM8_SP_REGNUM,
++				cache->base+retsize);
++	}
++	else
++	{
++		/* fp points to our base */
++		cache->base = fp;
++		if (cache->return_kind == RETURN_IRET)
++			cache->saved_regs[STM8_PC_REGNUM].addr = cache->base + 1 + 2 + 6;
++		else
++			cache->saved_regs[STM8_PC_REGNUM].addr = cache->base + 1 + 2;
++		cache->saved_regs[STM8_FP_REGNUM].addr = fp + 1;
++		trad_frame_set_value (cache->saved_regs,
++				STM8_SP_REGNUM,
++				cache->base+retsize+2);
++	}
++
++
++	if (stm8_debug)
++	{
++		fprintf_unfiltered (gdb_stdlog, "stm8_frame_cache: (next_frame=%p) base=%4.4lx curr_pc=%4.4lx curr_sp=%4.4lx fp_regnum=%d fp=%4.4lx framesize=%4.4x stackadj=%4.4x retsize=%d\n",
++				next_frame, cache->base, current_pc, current_sp, cache->fp_regnum, fp, cache->framesize, cache->stackadj, retsize);
++
++		CORE_ADDR frame_pc;
++		CORE_ADDR frame_sp;
++		CORE_ADDR frame_fp;
++		frame_pc = value_as_long(trad_frame_get_prev_register (next_frame, cache->saved_regs, STM8_PC_REGNUM));
++		frame_sp =  value_as_long(trad_frame_get_prev_register (next_frame, cache->saved_regs, STM8_SP_REGNUM));
++
++		// this is stupid, trad_frame_get_prev_register can't get a
++		// register value unless we have a valid frame id
++		// hopefully this will get resolved in the future :)
++		if (cache->saved_regs[STM8_FP_REGNUM].addr > 0)
++			frame_fp = value_as_long(trad_frame_get_prev_register (next_frame, cache->saved_regs, STM8_FP_REGNUM));
++		else
++			frame_fp = fp;
++
++		frame_pc = frame_pc >> 16;
++		fprintf_unfiltered (gdb_stdlog, "stm8_frame_cache: (next_frame=%p) pc=%8.8llx *pc=%8.8lx\n", next_frame, cache->saved_regs[STM8_PC_REGNUM].addr, frame_pc);
++		fprintf_unfiltered (gdb_stdlog, "stm8_frame_cache: (next_frame=%p) sp=%8.8llx *sp=%8.8lx\n", next_frame, cache->saved_regs[STM8_SP_REGNUM].addr, frame_sp);
++		fprintf_unfiltered (gdb_stdlog, "stm8_frame_cache: (next_frame=%p) fp=%8.8llx *fp=%8.8lx\n", next_frame, cache->saved_regs[STM8_FP_REGNUM].addr, frame_fp);
++	}
++
++	return (struct stm8_frame_cache *) (*this_cache);
++}
++
++
++/* Given a GDB frame, determine the address of the calling function's
++   frame.  This will be used to create a new GDB frame struct.  */
++static void
++stm8_frame_this_id (struct frame_info *next_frame, void **this_cache,
++		struct frame_id *this_id)
++{
++	struct stm8_frame_cache *cache =
++			stm8_frame_cache (next_frame, this_cache);
++	CORE_ADDR func;
++	CORE_ADDR base;
++
++	func = get_frame_func (next_frame);
++	base = cache->base;
++
++	/* This marks the outermost frame.  */
++	if (base == 0)
++		return;
++
++	(*this_id) = frame_id_build (base, func);
++
++	if (stm8_debug)
++		fprintf_unfiltered (gdb_stdlog, "stm8_frame_this_id: base=%8.8lx pc=%8.8lx\n",base, func);
++}
++
++static struct value *
++stm8_frame_prev_register (struct frame_info *this_frame,
++		void **this_cache, int regnum)
++{
++	struct value *value;
++	struct stm8_frame_cache *info = stm8_frame_cache (this_frame,
++			this_cache);
++
++	value = trad_frame_get_prev_register (this_frame, info->saved_regs, regnum);
++
++	/* Take into account the STM8 specific call.
++	 * Different lengths if it is CALL or CALLF  */
++	if (regnum == STM8_PC_REGNUM)
++	{
++		CORE_ADDR pc = value_as_long (value);
++		if (info->return_kind == RETURN_RET)
++			pc >>= 16;
++		else
++			pc >>= 8;
++
++		release_value (value);
++		value_free (value);
++
++		value = frame_unwind_got_constant (this_frame, regnum, pc);
++	}
++
++	if (stm8_debug)
++		fprintf_unfiltered (gdb_stdlog, "stm8_frame_prev_register: regnum(%d)=%8.8llx\n", regnum, value_as_long(value));
++
++	return value;
++}
++
++static void
++stm8_store_return_value (struct type *type, struct regcache *regcache,
++		const gdb_byte *valbuf)
++{
++	int len;
++
++	len = TYPE_LENGTH (type);
++
++	if (len == 1)
++		regcache_raw_write_part (regcache, STM8_A_REGNUM, 0, 1, valbuf);
++	else if (len == 2)
++		regcache_raw_write_part (regcache, STM8_X_REGNUM, 0, 2, valbuf);
++	else if (len == 4)
++	{
++		regcache_raw_write_part (regcache, STM8_X_REGNUM, 0, 2, valbuf+2);
++		regcache_raw_write_part (regcache, STM8_Y_REGNUM, 0, 2, valbuf);
++	}
++	else
++		error (_("return of value > 4 is not supported."));
++}
++
++/* Given a return value in `regcache' with a type `type',
++   extract and copy its value into `valbuf'.  */
++
++static void
++stm8_extract_return_value (struct type *type, struct regcache *regcache,
++		void *valbuf)
++{
++	gdb_byte buf[2];
++
++	switch (TYPE_LENGTH (type))
++	{
++	case 1:
++		regcache_raw_read (regcache, STM8_A_REGNUM, buf);
++		memcpy (valbuf, buf, 1);
++		break;
++
++	case 2:
++		regcache_raw_read (regcache, STM8_X_REGNUM, buf);
++		memcpy (valbuf, buf, 2);
++		break;
++
++	case 4:
++		regcache_raw_read (regcache, STM8_X_REGNUM, buf);
++		memcpy ((char*) valbuf + 2, buf, 2);
++		regcache_raw_read (regcache, STM8_Y_REGNUM, buf);
++		memcpy (valbuf, buf, 2);
++		break;
++
++	default:
++		error (_("bad size for return value"));
++	}
++}
++
++static enum return_value_convention
++stm8_return_value (struct gdbarch *gdbarch, struct value *function,
++		struct type *valtype, struct regcache *regcache,
++		gdb_byte *readbuf, const gdb_byte *writebuf)
++{
++	if (TYPE_CODE (valtype) == TYPE_CODE_STRUCT
++			|| TYPE_CODE (valtype) == TYPE_CODE_UNION
++			|| TYPE_CODE (valtype) == TYPE_CODE_ARRAY
++			|| TYPE_LENGTH (valtype) > 4)
++		return RETURN_VALUE_STRUCT_CONVENTION;
++	else
++	{
++		if (readbuf != NULL)
++			stm8_extract_return_value (valtype, regcache, readbuf);
++		if (writebuf != NULL)
++			stm8_store_return_value (valtype, regcache, writebuf);
++		return RETURN_VALUE_REGISTER_CONVENTION;
++	}
++}
++
++static const struct frame_unwind stm8_frame_unwind = {
++		NORMAL_FRAME,
++		default_frame_unwind_stop_reason,
++		stm8_frame_this_id,
++		stm8_frame_prev_register,
++		NULL,
++		default_frame_sniffer
++};
++
++static CORE_ADDR
++stm8_frame_base_address (struct frame_info *next_frame,
++		void **this_cache)
++{
++	struct stm8_frame_cache *cache =
++			stm8_frame_cache (next_frame, this_cache);
++
++	if (stm8_debug)
++		fprintf_unfiltered (gdb_stdlog, "stm8_frame_base_address: fb=%8.8lx\n", cache->base);
++
++	return cache->base;
++}
++
++static CORE_ADDR
++stm8_frame_args_address (struct frame_info *this_frame, void **this_cache)
++{
++	CORE_ADDR addr;
++	struct stm8_frame_cache *info
++	= stm8_frame_cache (this_frame, this_cache);
++
++	addr = info->base;
++	if (info->return_kind == RETURN_IRET)
++		addr += 12; //2 bytes fp + 9 bytes regs + 1
++	else if (info->return_kind == RETURN_RETF)
++		addr += 6; //2 bytes fp + 3 bytes pc + 1
++	else
++		addr += 5; //2 bytes fp + 2 bytes pc + 1
++
++	if (stm8_debug)
++		fprintf_unfiltered (gdb_stdlog, "stm8_frame_args_address: addr = %8.8lx\n",addr);
++
++	return addr;
++}
++
++static const struct frame_base stm8_frame_base =
++{
++		&stm8_frame_unwind,
++		stm8_frame_base_address,
++		stm8_frame_base_address,
++		stm8_frame_args_address
++};
++
++static const struct frame_base *
++stm8_frame_base_sniffer (struct frame_info *this_frame)
++{
++	return &stm8_frame_base;
++}
++
++struct target_desc *tdesc_stm8;
++static void
++initialize_tdesc_stm8 (void)
++{
++	struct target_desc *result = allocate_target_description ();
++	struct tdesc_feature *feature;
++
++	feature = tdesc_create_feature (result, "org.gnu.gdb.stm8.core");
++	tdesc_create_reg (feature, "pc", 0, 1, "general", 32, "uint32");
++	tdesc_create_reg (feature, "a", 1, 1, "general", 8, "uint8");
++	tdesc_create_reg (feature, "x", 2, 1, "general", 16, "uint16");
++	tdesc_create_reg (feature, "y", 3, 1, "general", 16, "uint16");
++	tdesc_create_reg (feature, "sp", 4, 1, "general", 16, "uint16");
++	tdesc_create_reg (feature, "cc", 5, 1, "general", 8, "uint16");
++
++	tdesc_stm8 = result;
++}
++
++
++/* Initialize the gdbarch structure for the STM8.  */
++
++static struct gdbarch *
++stm8_gdbarch_init (struct gdbarch_info info, struct gdbarch_list *arches)
++{
++  struct gdbarch *gdbarch;
++  struct gdbarch_tdep *tdep;
++  struct gdbarch_list *best_arch;
++  struct tdesc_arch_data *tdesc_data = NULL;
++  const struct target_desc *tdesc = info.target_desc;
++
++  /* If there is already a candidate, use it.  */
++  arches = gdbarch_list_lookup_by_info (arches, &info);
++  if (arches != NULL)
++  {
++	  tdep = gdbarch_tdep (arches->gdbarch);
++	  stm8_initialize_soft_register_info(tdep);
++	  return arches->gdbarch;
++  }
++  if (tdesc == NULL)
++    tdesc = tdesc_stm8;
++
++  /* Check any target description for validity.  */
++  if (tdesc_has_registers (tdesc))
++    {
++      const struct tdesc_feature *feature;
++      int valid_p;
++      int i;
++
++      feature = tdesc_find_feature (tdesc,
++				    "org.gnu.gdb.stm8.core");
++      if (feature == NULL)
++        return NULL;
++      tdesc_data = tdesc_data_alloc ();
++
++      valid_p = 1;
++      for (int i = 0; i < STM8_NUM_REGS; i++)
++        valid_p &= tdesc_numbered_register (feature, tdesc_data, i,
++        		stm8_register_names[i]);
++      if (!valid_p)
++        {
++          tdesc_data_cleanup (tdesc_data);
++          return NULL;
++        }
++    }
++
++  /* None found, create a new architecture from the information provided.  */
++  tdep = XNEW (struct gdbarch_tdep);
++  gdbarch = gdbarch_alloc (&info, tdep);
++
++  /* Initialize soft registers */
++  stm8_initialize_soft_register_info(tdep);
++
++  set_gdbarch_num_regs (gdbarch, STM8_NUM_REGS);
++  set_gdbarch_register_name (gdbarch, stm8_register_name);
++  set_gdbarch_register_type (gdbarch, stm8_register_type);
++  set_tdesc_pseudo_register_type (gdbarch, stm8_register_type);
++  set_tdesc_pseudo_register_name (gdbarch, stm8_register_name);
++
++  set_gdbarch_num_pseudo_regs (gdbarch, 1);
++  set_gdbarch_pseudo_register_read (gdbarch, stm8_pseudo_register_read);
++  set_gdbarch_pseudo_register_write (gdbarch, stm8_pseudo_register_write);
++
++  set_gdbarch_convert_register_p (gdbarch, stm8_convert_register_p);
++  set_gdbarch_register_to_value (gdbarch, stm8_register_to_value);
++
++  /* Register numbers of various important registers.  */
++  set_gdbarch_sp_regnum (gdbarch, STM8_SP_REGNUM);
++  set_gdbarch_pc_regnum (gdbarch, STM8_PC_REGNUM);
++  set_gdbarch_ps_regnum (gdbarch, STM8_CC_REGNUM);
++  
++  //set_gdbarch_ptr_bit (gdbarch, 2 * TARGET_CHAR_BIT);
++  //set_gdbarch_addr_bit (gdbarch, 3 * TARGET_CHAR_BIT);
++
++  /* Map Dwarf2 registers to GDB registers.  */
++  set_gdbarch_dwarf2_reg_to_regnum (gdbarch, stm8_dwarf2_reg_to_regnum);
++
++  /* Call dummy code.  */
++  set_gdbarch_call_dummy_location (gdbarch, ON_STACK);
++
++  set_gdbarch_return_value (gdbarch, stm8_return_value);
++
++  set_gdbarch_skip_prologue (gdbarch, stm8_skip_prologue);
++
++  /* Stack grows downward.  */
++  set_gdbarch_inner_than (gdbarch, core_addr_lessthan);
++
++#if 0
++  set_gdbarch_breakpoint_kind_from_pc (gdbarch, stm8_breakpoint_kind_from_pc);
++  set_gdbarch_sw_breakpoint_from_kind (gdbarch,  stm8_sw_breakpoint_from_kind);
++#endif
++  set_gdbarch_breakpoint_from_pc (gdbarch, stm8_breakpoint_from_pc);
++
++  //set_gdbarch_frame_args_skip (gdbarch, 8);
++
++  set_gdbarch_print_insn (gdbarch, print_insn_stm8);
++
++  set_gdbarch_write_pc (gdbarch, stm8_write_pc);
++
++  set_gdbarch_unwind_pc (gdbarch, stm8_unwind_pc);
++  set_gdbarch_unwind_sp (gdbarch, stm8_unwind_sp);
++  set_gdbarch_dummy_id (gdbarch, stm8_dummy_id);
++
++  frame_base_set_default (gdbarch, &stm8_frame_base);
++
++  /* Hook in ABI-specific overrides, if they have been registered.  */
++  //gdbarch_init_osabi (info, gdbarch);
++
++  //dwarf2 cfi unwinder
++  //dwarf2_frame_set_init_reg (gdbarch, stm8_dwarf2_frame_init_reg);
++
++  dwarf2_append_unwinders (gdbarch);
++  frame_unwind_append_unwinder (gdbarch, &stm8_frame_unwind);
++  frame_base_append_sniffer (gdbarch, dwarf2_frame_base_sniffer);
++  frame_base_append_sniffer (gdbarch, stm8_frame_base_sniffer);
++  
++//  /* Create a type for PC.  We can't use builtin types here, as they may not
++//     be defined.  */
++//  tdep->void_type = arch_type (gdbarch, TYPE_CODE_VOID, 1, "void");
++//  tdep->func_void_type = make_function_type (tdep->void_type, NULL);
++//  tdep->pc_type = arch_pointer_type (gdbarch, 4 * TARGET_CHAR_BIT, NULL,
++//				     tdep->func_void_type);
++//
++//  set_gdbarch_short_bit (gdbarch, 2 * TARGET_CHAR_BIT);
++//  set_gdbarch_int_bit (gdbarch, 2 * TARGET_CHAR_BIT);
++//  set_gdbarch_long_bit (gdbarch, 4 * TARGET_CHAR_BIT);
++//  set_gdbarch_long_long_bit (gdbarch, 8 * TARGET_CHAR_BIT);
++//  set_gdbarch_ptr_bit (gdbarch, 2 * TARGET_CHAR_BIT);
++//  set_gdbarch_addr_bit (gdbarch, 32);
++//
++//  set_gdbarch_float_bit (gdbarch, 4 * TARGET_CHAR_BIT);
++//  set_gdbarch_double_bit (gdbarch, 4 * TARGET_CHAR_BIT);
++//  set_gdbarch_long_double_bit (gdbarch, 4 * TARGET_CHAR_BIT);
++//
++//  set_gdbarch_float_format (gdbarch, floatformats_ieee_single);
++//  set_gdbarch_double_format (gdbarch, floatformats_ieee_single);
++//  set_gdbarch_long_double_format (gdbarch, floatformats_ieee_single);
++//
++//
++//  set_gdbarch_push_dummy_call (gdbarch, stm8_push_dummy_call);
++//
++//  set_gdbarch_dwarf2_reg_to_regnum (gdbarch, stm8_dwarf_reg_to_regnum);
++//
++//  set_gdbarch_address_to_pointer (gdbarch, avr_address_to_pointer);
++//  set_gdbarch_pointer_to_address (gdbarch, avr_pointer_to_address);
++//  set_gdbarch_integer_to_address (gdbarch, avr_integer_to_address);
++//
++//  frame_base_set_default (gdbarch, &stm8_frame_base);
++//
++//  set_gdbarch_dummy_id (gdbarch, stm8_dummy_id);
++//
++//
++
++  if (tdesc_data != NULL)
++    tdesc_use_registers (gdbarch, tdesc, tdesc_data);
++
++  return gdbarch;
++}
++
++static void
++show_stm8_debug (struct ui_file *file, int from_tty,
++		struct cmd_list_element *c, const char *value)
++{
++	fprintf_filtered (file, _("stm8 debugging is %s.\n"), value);
++}
++
++extern initialize_file_ftype _initialize_stm8_tdep; /* -Wmissing-prototypes */
++
++void
++_initialize_stm8_tdep (void)
++{
++	stm8_debug = 0;
++	register_gdbarch_init (bfd_arch_stm8, stm8_gdbarch_init);
++	initialize_tdesc_stm8 ();
++
++	add_setshow_zuinteger_cmd ("stm8", class_maintenance, &stm8_debug,  _("\
++Set stm8 debugging."), _("\
++Show stm8 debugging."), _("\
++When non-zero, stm8 debugging is enabled."),
++NULL,
++show_stm8_debug,
++&setdebuglist, &showdebuglist);
++
++}
+diff --git a/include/dis-asm.h b/include/dis-asm.h
+index eebdaf874f..234dfed263 100644
+--- a/include/dis-asm.h
++++ b/include/dis-asm.h
+@@ -248,6 +248,7 @@ extern int print_insn_rl78		(bfd_vma, disassemble_info *);
+ extern int print_insn_rl78_g10		(bfd_vma, disassemble_info *);
+ extern int print_insn_rl78_g13		(bfd_vma, disassemble_info *);
+ extern int print_insn_rl78_g14		(bfd_vma, disassemble_info *);
++extern int print_insn_stm8		(bfd_vma, disassemble_info *);
+ 
+ extern disassembler_ftype arc_get_disassembler (bfd *);
+ extern disassembler_ftype cris_get_disassembler (bfd *);
+diff --git a/include/elf/stm8.h b/include/elf/stm8.h
+new file mode 100644
+index 0000000000..4f70335431
+--- /dev/null
++++ b/include/elf/stm8.h
+@@ -0,0 +1,38 @@
++/* STM8 ELF support for BFD.
++   Written by Ake Rehnman 2017-02-21,
++   ake.rehnman (at) gmail dot com
++
++   Copyright (C) 1999-2016 Free Software Foundation, Inc.
++
++   This file is part of BFD, the Binary File Descriptor library.
++
++   This program is free software; you can redistribute it and/or modify
++   it under the terms of the GNU General Public License as published by
++   the Free Software Foundation; either version 3 of the License, or
++   (at your option) any later version.
++
++   This program is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++   GNU General Public License for more details.
++
++   You should have received a copy of the GNU General Public License
++   along with this program; if not, write to the Free Software Foundation,
++   Inc., 51 Franklin Street - Fifth Floor, Boston, MA 02110-1301, USA.  */
++
++#ifndef _ELF_STM8_H
++#define _ELF_STM8_H
++
++#include "elf/reloc-macros.h"
++
++/* Relocations.  */
++START_RELOC_NUMBERS (elf_avr_reloc_type)
++     RELOC_NUMBER (R_STM8_NONE,			0)
++     RELOC_NUMBER (R_STM8_8, 		       1)
++     RELOC_NUMBER (R_STM8_16, 			2)
++     RELOC_NUMBER (R_STM8_24,          3)
++     RELOC_NUMBER (R_STM8_32,			4)
++     RELOC_NUMBER (R_STM8_8_PCREL,    5)
++END_RELOC_NUMBERS (R_STM8_max)
++
++#endif /* _ELF_STM_H */
+diff --git a/include/opcode/stm8.h b/include/opcode/stm8.h
+new file mode 100644
+index 0000000000..a40ff0aaaa
+--- /dev/null
++++ b/include/opcode/stm8.h
+@@ -0,0 +1,82 @@
++/* include/opcode/stm8.h -- Assembler for the STM8.
++   Written by Ake Rehnman 2017-02-21,
++   ake.rehnman (at) gmail dot com
++
++   Copyright (C) 2007-2016 Free Software Foundation, Inc.
++
++   This program is free software; you can redistribute it and/or modify
++   it under the terms of the GNU General Public License as published by
++   the Free Software Foundation; either version 3 of the License, or
++   (at your option) any later version.
++
++   This program is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++   GNU General Public License for more details.
++
++   You should have received a copy of the GNU General Public License
++   along with this program; if not, write to the Free Software Foundation,
++   Inc., 51 Franklin Street - Fifth Floor, Boston, MA 02110-1301, USA.  */
++
++#ifndef _STM8_H_
++#define _STM8_H_
++
++typedef enum {
++	ST8_END = 0,
++	ST8_BIT_0,
++	ST8_BIT_1,
++	ST8_BIT_2,
++	ST8_BIT_3,
++	ST8_BIT_4,
++	ST8_BIT_5,
++	ST8_BIT_6,
++	ST8_BIT_7,
++	ST8_PCREL,
++	ST8_REG_CC,
++	ST8_REG_A,
++	ST8_REG_X,
++	ST8_REG_Y,
++	ST8_REG_SP,
++	ST8_REG_XL,
++	ST8_REG_XH,
++	ST8_REG_YL,
++	ST8_REG_YH,
++	ST8_BYTE, //IMM8
++	ST8_WORD, //IMM16
++	ST8_SHORTMEM, //DIR8
++	ST8_LONGMEM,  //DIR16
++	ST8_EXTMEM,   //DIR24
++	ST8_INDX,
++	ST8_INDY,
++	ST8_SHORTOFF_X,
++	ST8_LONGOFF_X,
++	ST8_EXTOFF_X,
++	ST8_SHORTOFF_Y,
++	ST8_LONGOFF_Y,
++	ST8_EXTOFF_Y,
++	ST8_SHORTOFF_SP,
++	ST8_SHORTPTRW,
++	ST8_LONGPTRW,
++	ST8_SHORTPTRW_X,
++	ST8_LONGPTRW_X,
++	ST8_SHORTPTRW_Y,
++	ST8_LONGPTRW_Y,
++	ST8_LONGPTRE,
++	ST8_LONGPTRE_X,
++	ST8_LONGPTRE_Y
++} stm8_addr_mode_t;
++
++struct stm8_opcodes_s
++{
++  const char * name;
++  stm8_addr_mode_t  constraints[5];
++  unsigned int bin_opcode;
++};
++
++extern const struct stm8_opcodes_s stm8_opcodes[];
++
++extern int stm8_compute_insn_size(struct stm8_opcodes_s opcode);
++
++extern unsigned int stm8_opcode_size(unsigned int number);
++
++#endif /* _STM8_H_ */
+diff --git a/ld/Makefile.am b/ld/Makefile.am
+index 6243c12528..edac1c77fc 100644
+--- a/ld/Makefile.am
++++ b/ld/Makefile.am
+@@ -516,7 +516,8 @@ ALL_64_EMULATION_SOURCES = \
+ 	eshelf64.c \
+ 	eshelf64_nbsd.c \
+ 	eshlelf64.c \
+-	eshlelf64_nbsd.c
++	eshlelf64_nbsd.c \
++	eelf32stm8.c
+ 
+ ALL_64_EMULATIONS = $(ALL_64_EMULATION_SOURCES:.c=.@OBJEXT@)
+ 
+@@ -2093,6 +2094,10 @@ eshlelf64_nbsd.c: $(srcdir)/emulparams/shlelf64_nbsd.sh \
+   $(srcdir)/emulparams/shelf64_nbsd.sh \
+   $(srcdir)/emulparams/shelf32_nbsd.sh $(srcdir)/emulparams/shelf32.sh \
+   $(ELF_DEPS) $(srcdir)/scripttempl/elf.sc ${GEN_DEPENDS}
++  
++eelf32stm8.c: $(srcdir)/emulparams/elf32stm8.sh \
++  $(ELF_DEPS) $(srcdir)/scripttempl/elfstm8.sc ${GEN_DEPENDS}
++  
+ 
+ 
+ # We need this for automake to use YLWRAP.
+diff --git a/ld/Makefile.in b/ld/Makefile.in
+index 760c037f9d..a73392c0d6 100644
+--- a/ld/Makefile.in
++++ b/ld/Makefile.in
+@@ -884,7 +884,8 @@ ALL_64_EMULATION_SOURCES = \
+ 	eshelf64.c \
+ 	eshelf64_nbsd.c \
+ 	eshlelf64.c \
+-	eshlelf64_nbsd.c
++	eshlelf64_nbsd.c \
++	eelf32stm8.c
+ 
+ ALL_64_EMULATIONS = $(ALL_64_EMULATION_SOURCES:.c=.@OBJEXT@)
+ ALL_EMUL_EXTRA_OFILES = \
+@@ -1282,6 +1283,7 @@ distclean-compile:
+ @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/eelf32ppcwindiss.Po@am__quote@
+ @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/eelf32rl78.Po@am__quote@
+ @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/eelf32rx.Po@am__quote@
++@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/eelf32stm8.Po@am__quote@
+ @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/eelf32tilegx.Po@am__quote@
+ @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/eelf32tilegx_be.Po@am__quote@
+ @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/eelf32tilepro.Po@am__quote@
+@@ -3658,6 +3660,9 @@ eshlelf64_nbsd.c: $(srcdir)/emulparams/shlelf64_nbsd.sh \
+   $(srcdir)/emulparams/shelf32_nbsd.sh $(srcdir)/emulparams/shelf32.sh \
+   $(ELF_DEPS) $(srcdir)/scripttempl/elf.sc ${GEN_DEPENDS}
+ 
++eelf32stm8.c: $(srcdir)/emulparams/elf32stm8.sh \
++  $(ELF_DEPS) $(srcdir)/scripttempl/elfstm8.sc ${GEN_DEPENDS}
++
+ check-DEJAGNU: site.exp
+ 	srcroot=`cd $(srcdir) && pwd`; export srcroot; \
+ 	r=`pwd`; export r; \
+diff --git a/ld/configure.tgt b/ld/configure.tgt
+index 6183a85b3d..3f6e0f28f4 100644
+--- a/ld/configure.tgt
++++ b/ld/configure.tgt
+@@ -877,6 +877,8 @@ z80-*-coff)		targ_emul=z80
+ 			;;
+ z8k-*-coff)		targ_emul=z8002; targ_extra_emuls=z8001
+ 			;;
++stm8-*-elf32) 		targ_emul=elf32stm8
++			;;
+ *-*-ieee*)		targ_emul=vanilla
+ 			;;
+ *-tandem-none)		targ_emul=st2000
+diff --git a/ld/emulparams/elf32stm8.sh b/ld/emulparams/elf32stm8.sh
+new file mode 100644
+index 0000000000..c37c9e51da
+--- /dev/null
++++ b/ld/emulparams/elf32stm8.sh
+@@ -0,0 +1,14 @@
++ARCH=stm8
++MACHINE=stm8
++SCRIPT_NAME=elfstm8
++OUTPUT_FORMAT="elf32-stm8"
++MAXPAGESIZE=1
++EMBEDDED=yes
++TEMPLATE_NAME=elf32
++
++TEXT_LENGTH=1024K
++DATA_ORIGIN=0x802000
++DATA_LENGTH=0xffa0
++
++
++
+diff --git a/ld/scripttempl/elfstm8.sc b/ld/scripttempl/elfstm8.sc
+new file mode 100644
+index 0000000000..0ce6b56741
+--- /dev/null
++++ b/ld/scripttempl/elfstm8.sc
+@@ -0,0 +1,232 @@
++# Adapted from mips.sc
++#
++# Copyright (C) 2014-2016 Free Software Foundation, Inc.
++# 
++# Copying and distribution of this file, with or without modification,
++# are permitted in any medium without royalty provided the copyright
++# notice and this notice are preserved.
++#
++# These variables may be overridden by the emulation file.  The
++# defaults are appropriate for a DECstation running Ultrix.
++
++test -z "$ENTRY" && ENTRY=_start
++
++#test -z "$TEXT_START_ADDR" && TEXT_START_ADDR="0x0"
++
++CTOR=".ctors ${CONSTRUCTING-0} : 
++  {
++    ${CONSTRUCTING+${CTOR_START}}
++    /* gcc uses crtbegin.o to find the start of
++       the constructors, so we make sure it is
++       first.  Because this is a wildcard, it
++       doesn't matter if the user does not
++       actually link against crtbegin.o; the
++       linker won't look for a file to match a
++       wildcard.  The wildcard also means that it
++       doesn't matter which directory crtbegin.o
++       is in.  */
++
++    KEEP (*crtbegin.o(.ctors))
++
++    /* We don't want to include the .ctor section from
++       from the crtend.o file until after the sorted ctors.
++       The .ctor section from the crtend file contains the
++       end of ctors marker and it must be last */
++
++    KEEP (*(EXCLUDE_FILE (*crtend.o) .ctors))
++    KEEP (*(SORT(.ctors.*)))
++    KEEP (*(.ctors))
++    ${CONSTRUCTING+${CTOR_END}}
++  }"
++
++DTOR=" .dtors       ${CONSTRUCTING-0} :
++  {
++    ${CONSTRUCTING+${DTOR_START}}
++    KEEP (*crtbegin.o(.dtors))
++    KEEP (*(EXCLUDE_FILE (*crtend.o) .dtors))
++    KEEP (*(SORT(.dtors.*)))
++    KEEP (*(.dtors))
++    ${CONSTRUCTING+${DTOR_END}}
++  }"
++
++cat <<EOF
++/* Copyright (C) 2014-2016 Free Software Foundation, Inc.
++
++   Copying and distribution of this script, with or without modification,
++   are permitted in any medium without royalty provided the copyright
++   notice and this notice are preserved.  */
++
++OUTPUT_FORMAT("${OUTPUT_FORMAT}", "${BIG_OUTPUT_FORMAT}",
++	      "${LITTLE_OUTPUT_FORMAT}")
++/*${LIB_SEARCH_DIRS}*/
++${RELOCATING+${LIB_SEARCH_DIRS}}
++
++${RELOCATING+ENTRY (${ENTRY})}
++
++_TEXT_START_ADDR = DEFINED(_TEXT_START_ADDR) ? _TEXT_START_ADDR : 0x50;		
++_HEAP_SIZE = DEFINED(_HEAP_SIZE) ? _HEAP_SIZE : 0x0;
++_STACK_SIZE = DEFINED(_STACK_SIZE) ? _STACK_SIZE : 0x400;
++
++SECTIONS
++{
++  .vectors.reset 0x8000 : { KEEP (*(.vectors.reset)) } = 0
++
++  ${RELOCATING+. = _TEXT_START_ADDR;}
++
++  ${RELOCATING+ _ftext  =  .;}
++  .text : {
++    ${RELOCATING+*(.text)}
++    ${RELOCATING+*(.text.*)}
++    ${RELOCATING+*(.gnu.linkonce.t.*)}
++  }
++  ${RELOCATING+ _etext  =  .;}
++
++  .init : { KEEP (*(.init))	} =0
++  .fini : { KEEP (*(.fini))	} =0
++
++  ${RELOCATING+PROVIDE (__CTOR_LIST__ = .);}
++  ${RELOCATING+PROVIDE (___CTOR_LIST__ = .);}
++  ${RELOCATING+${CTOR}}
++  ${RELOCATING+PROVIDE (__CTOR_END__ = .);}
++  ${RELOCATING+PROVIDE (___CTOR_END__ = .);}
++
++  ${RELOCATING+PROVIDE (__DTOR_LIST__ = .);}
++  ${RELOCATING+PROVIDE (___DTOR_LIST__ = .);}
++  ${RELOCATING+${DTOR}}
++  ${RELOCATING+PROVIDE (__DTOR_END__ = .);}
++  ${RELOCATING+PROVIDE (___DTOR_END__ = .);}
++
++  ${RELOCATING+ . = ALIGN(4);}
++   ${RELOCATING+ _frodata = . ;}
++  .rodata : {
++    ${RELOCATING+*(.rodata)}
++    ${RELOCATING+*(.rodata.*)}
++    ${RELOCATING+*(.gnu.linkonce.r.*)}
++    ${CONSTRUCTING+CONSTRUCTORS}; /* Is this needed? */
++  }
++  ${RELOCATING+ _erodata = .;}
++
++  /* Alignments by 8 to ensure that _SDA2_BASE_ on a word boundary */
++  /* Note that .sdata2 and .sbss2 must be contiguous */
++  ${RELOCATING+. = ALIGN(8);}
++  ${RELOCATING+ _ssrw = .;}
++  .sdata2 : {
++    ${RELOCATING+*(.sdata2)}
++    ${RELOCATING+*(.sdata2.*)}
++    ${RELOCATING+*(.gnu.linkonce.s2.*)}
++  }
++  ${RELOCATING+. = ALIGN(4);}
++  .sbss2 : {
++    ${RELOCATING+PROVIDE (__sbss2_start = .);}	
++    ${RELOCATING+*(.sbss2)}
++    ${RELOCATING+*(.sbss2.*)}
++    ${RELOCATING+*(.gnu.linkonce.sb2.*)}
++    ${RELOCATING+PROVIDE (__sbss2_end = .);}
++  }
++  ${RELOCATING+. = ALIGN(8);}
++  ${RELOCATING+ _essrw = .;}
++  ${RELOCATING+ _ssrw_size = _essrw - _ssrw;}
++  ${RELOCATING+ PROVIDE (_SDA2_BASE_ = _ssrw + (_ssrw_size / 2 ));}
++
++  ${RELOCATING+ . = ALIGN(4);}
++  ${RELOCATING+ _fdata = .;}
++  .data : {
++    ${RELOCATING+*(.data)}
++    ${RELOCATING+*(.gnu.linkonce.d.*)}
++    ${CONSTRUCTING+CONSTRUCTORS}; /* Is this needed? */
++  }
++  ${RELOCATING+ _edata = . ;}
++  
++   /* Added to handle pic code */
++  .got : {  
++    ${RELOCATING+*(.got)}
++  }
++
++  .got1 : {  
++    ${RELOCATING+*(.got1)}
++  }
++
++  .got2 : {  
++    ${RELOCATING+*(.got2)}
++  }
++
++  /* Added by Sathya to handle C++ exceptions */
++  .eh_frame : {  
++    ${RELOCATING+*(.eh_frame)}
++  }
++  
++  .jcr : {  
++    ${RELOCATING+*(.jcr)}
++  }
++
++  .gcc_except_table : {  
++    ${RELOCATING+*(.gcc_except_table)}
++  }
++
++  /* Alignments by 8 to ensure that _SDA_BASE_ on a word boundary */
++  /* Note that .sdata and .sbss must be contiguous */
++  ${RELOCATING+. = ALIGN(8);}
++  ${RELOCATING+ _ssro = .;}
++  .sdata : {
++    ${RELOCATING+*(.sdata)}
++    ${RELOCATING+*(.sdata.*)}
++    ${RELOCATING+*(.gnu.linkonce.s.*)}
++  }
++  ${RELOCATING+. = ALIGN(4);}
++  .sbss : {
++    ${RELOCATING+PROVIDE (__sbss_start = .);}	
++    ${RELOCATING+*(.sbss)}
++    ${RELOCATING+*(.sbss.*)}
++    ${RELOCATING+*(.gnu.linkonce.sb.*)}
++    ${RELOCATING+PROVIDE (__sbss_end = .);}
++  }
++  ${RELOCATING+. = ALIGN(8);}
++  ${RELOCATING+ _essro = .;}
++  ${RELOCATING+ _ssro_size = _essro - _ssro;}
++  ${RELOCATING+PROVIDE (_SDA_BASE_ = _ssro + (_ssro_size / 2 ));}
++
++  ${RELOCATING+ . = ALIGN(4);}
++  ${RELOCATING+ _fbss = .;}
++  .bss : {
++    ${RELOCATING+PROVIDE (__bss_start = .);}	
++    ${RELOCATING+*(.bss)}
++    ${RELOCATING+*(.bss.*)}
++    ${RELOCATING+*(.gnu.linkonce.b.*)}
++    ${RELOCATING+*(COMMON)}
++    ${RELOCATING+. = ALIGN(. != 0 ? 4 : 1);}
++    
++    ${RELOCATING+PROVIDE (__bss_end = .);}
++
++  }
++
++  ${RELOCATING+ . = ALIGN(4);}
++
++  .heap : {
++    ${RELOCATING+ _heap = .;}
++    ${RELOCATING+ _heap_start = .;}
++    ${RELOCATING+ . += _HEAP_SIZE;}
++    ${RELOCATING+ _heap_end = .;}
++  } 
++
++  ${RELOCATING+ . = ALIGN(4);}
++
++  .stack : {
++    ${RELOCATING+ _stack_end = .;}
++    ${RELOCATING+ . += _STACK_SIZE;}
++    ${RELOCATING+ . = ALIGN(. != 0 ? 8 : 1);}
++    ${RELOCATING+ _stack = .;}
++    ${RELOCATING+ _end = .;}
++  }
++
++  .tdata : {  
++    ${RELOCATING+*(.tdata)}
++    ${RELOCATING+*(.tdata.*)}
++    ${RELOCATING+*(.gnu.linkonce.td.*)}
++  }
++  .tbss : {  
++    ${RELOCATING+*(.tbss)}
++    ${RELOCATING+*(.tbss.*)}
++    ${RELOCATING+*(.gnu.linkonce.tb.*)}
++  }
++}
++EOF
+diff --git a/opcodes/Makefile.am b/opcodes/Makefile.am
+index 2458027922..8c3ce6f326 100644
+--- a/opcodes/Makefile.am
++++ b/opcodes/Makefile.am
+@@ -274,7 +274,9 @@ TARGET_LIBOPCODES_CFILES = \
+ 	xgate-dis.c \
+ 	xgate-opc.c \
+ 	z80-dis.c \
+-	z8k-dis.c
++	z8k-dis.c \
++	stm8-dis.c \
++	stm8-opc.c
+ 
+ # C source files that correspond to .o's ending up in libopcodes.
+ LIBOPCODES_CFILES = \
+diff --git a/opcodes/Makefile.in b/opcodes/Makefile.in
+index a130efc3bf..79b081f42e 100644
+--- a/opcodes/Makefile.in
++++ b/opcodes/Makefile.in
+@@ -576,7 +576,9 @@ TARGET_LIBOPCODES_CFILES = \
+ 	xgate-dis.c \
+ 	xgate-opc.c \
+ 	z80-dis.c \
+-	z8k-dis.c
++	z8k-dis.c \
++	stm8-dis.c \
++	stm8-opc.c
+ 
+ 
+ # C source files that correspond to .o's ending up in libopcodes.
+@@ -953,6 +955,8 @@ distclean-compile:
+ @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/sparc-opc.Plo@am__quote@
+ @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/spu-dis.Plo@am__quote@
+ @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/spu-opc.Plo@am__quote@
++@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/stm8-dis.Plo@am__quote@
++@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/stm8-opc.Plo@am__quote@
+ @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/tic30-dis.Plo@am__quote@
+ @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/tic4x-dis.Plo@am__quote@
+ @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/tic54x-dis.Plo@am__quote@
+diff --git a/opcodes/configure b/opcodes/configure
+index 17530f54b9..00e7970773 100755
+--- a/opcodes/configure
++++ b/opcodes/configure
+@@ -12732,6 +12732,7 @@ if test x${all_targets} = xfalse ; then
+ 	bfd_xtensa_arch)	ta="$ta xtensa-dis.lo" ;;
+ 	bfd_z80_arch)		ta="$ta z80-dis.lo" ;;
+ 	bfd_z8k_arch)		ta="$ta z8k-dis.lo" ;;
++	bfd_stm8_arch)		ta="$ta stm8-dis.lo stm8-opc.lo" ;;
+ 
+ 	"")			;;
+ 	*)		as_fn_error "*** unknown target architecture $arch" "$LINENO" 5 ;;
+diff --git a/opcodes/configure.ac b/opcodes/configure.ac
+index b07f3f3629..b1d52045a1 100644
+--- a/opcodes/configure.ac
++++ b/opcodes/configure.ac
+@@ -356,6 +356,7 @@ if test x${all_targets} = xfalse ; then
+ 	bfd_xtensa_arch)	ta="$ta xtensa-dis.lo" ;;
+ 	bfd_z80_arch)		ta="$ta z80-dis.lo" ;;
+ 	bfd_z8k_arch)		ta="$ta z8k-dis.lo" ;;
++	bfd_stm8_arch)		ta="$ta stm8-dis.lo stm8-opc.lo" ;;
+ 
+ 	"")			;;
+ 	*)		AC_MSG_ERROR(*** unknown target architecture $arch) ;;
+diff --git a/opcodes/disassemble.c b/opcodes/disassemble.c
+index ae48f5367b..6f307bea6b 100644
+--- a/opcodes/disassemble.c
++++ b/opcodes/disassemble.c
+@@ -102,6 +102,7 @@
+ #define ARCH_xtensa
+ #define ARCH_z80
+ #define ARCH_z8k
++#define ARCH_stm8
+ #define INCLUDE_SHMEDIA
+ #endif
+ 
+@@ -515,6 +516,11 @@ disassembler (enum bfd_architecture a,
+ 	disassemble = print_insn_z8002;
+       break;
+ #endif
++#ifdef ARCH_stm8
++    case bfd_arch_stm8:
++      disassemble = print_insn_stm8;
++      break;
++#endif
+ #ifdef ARCH_vax
+     case bfd_arch_vax:
+       disassemble = print_insn_vax;
+diff --git a/opcodes/stm8-dis.c b/opcodes/stm8-dis.c
+new file mode 100644
+index 0000000000..751c62c2b7
+--- /dev/null
++++ b/opcodes/stm8-dis.c
+@@ -0,0 +1,412 @@
++/* Disassemble STM8 instructions.
++   Copyright (C) 1999-2016 Free Software Foundation, Inc.
++
++   Contributed by Ake Rehnman
++
++   This file is part of libopcodes.
++
++   This library is free software; you can redistribute it and/or modify
++   it under the terms of the GNU General Public License as published by
++   the Free Software Foundation; either version 3, or (at your option)
++   any later version.
++
++   It is distributed in the hope that it will be useful, but WITHOUT
++   ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
++   or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public
++   License for more details.
++
++   You should have received a copy of the GNU General Public License
++   along with this program; if not, write to the Free Software
++   Foundation, Inc., 51 Franklin Street - Fifth Floor, Boston,
++   MA 02110-1301, USA.  */
++
++#include "sysdep.h"
++#include <assert.h>
++#include "dis-asm.h"
++#include "opintl.h"
++#include "libiberty.h"
++
++#include "opcode/stm8.h"
++
++disassemble_info *dinfo;
++bfd_vma daddr;
++int instrlen;
++bfd_vma lastlabeladdr;
++unsigned char buffer[16];
++
++int stm8_dis(bfd_vma addr, unsigned int op);
++int stm8_operands(char *s, unsigned char buf[], stm8_addr_mode_t arg);
++const char* find_symbol(unsigned int addr);
++int find_symbol_x(bfd_vma addr);
++
++
++static int
++fetch_data (unsigned char *buf, bfd_vma addr, disassemble_info *info, int n)
++{
++  int r;
++
++  r = info->read_memory_func (addr, buf, n, info);
++  return r;
++}
++
++int find_symbol_x(bfd_vma addr)
++{
++	return dinfo->symbol_at_address_func(addr,dinfo);
++}
++
++const char* find_symbol(unsigned int addr)
++{
++	int i;
++
++	for (i=0;i<(dinfo->symtab_size);i++)
++	{
++		if ((dinfo->symtab[i]->value+dinfo->symtab[i]->section->vma) == addr)
++			return dinfo->symtab[i]->name;
++	}
++	lastlabeladdr = addr;
++	return 0;
++}
++
++int stm8_operands(char *s, unsigned char buf[], stm8_addr_mode_t arg)
++{
++	unsigned int val;
++	const char *sym;
++
++	switch(arg)
++	{
++	case ST8_REG_A:
++		sprintf(s,"A");
++		break;
++	case ST8_REG_X:
++		sprintf(s,"X");
++		break;
++	case ST8_REG_Y:
++		sprintf(s,"Y");
++		break;
++	case ST8_REG_SP:
++		sprintf(s,"SP");
++		break;
++	case ST8_REG_CC:
++		sprintf(s,"CC");
++		break;
++	case ST8_REG_XL:
++		sprintf(s,"XL");
++		break;
++	case ST8_REG_XH:
++		sprintf(s,"XH");
++		break;
++	case ST8_REG_YL:
++		sprintf(s,"YL");
++		break;
++	case ST8_REG_YH:
++		sprintf(s,"YH");
++		break;
++	case ST8_BIT_0:
++		sprintf(s,"#0");
++		break;
++	case ST8_BIT_1:
++		sprintf(s,"#1");
++		break;
++	case ST8_BIT_2:
++		sprintf(s,"#2");
++		break;
++	case ST8_BIT_3:
++		sprintf(s,"#3");
++		break;
++	case ST8_BIT_4:
++		sprintf(s,"#4");
++		break;
++	case ST8_BIT_5:
++		sprintf(s,"#5");
++		break;
++	case ST8_BIT_6:
++		sprintf(s,"#6");
++		break;
++	case ST8_BIT_7:
++		sprintf(s,"#7");
++		break;
++	case ST8_BYTE:
++		val = buf[0];
++		sym = find_symbol(val);
++		if (sym)
++			sprintf(s,"#%s",sym);
++		else
++			sprintf(s,"#0x%2.2x",val);
++		return 1;
++		break;
++	case ST8_WORD:
++		val = (buf[0]<<8)+buf[1];
++		sym = find_symbol(val);
++		if (sym)
++			sprintf(s,"#%s",sym);
++		else
++			sprintf(s,"#0x%4.4x",val);
++		return 2;
++		break;
++	case ST8_PCREL:
++		val = (char)buf[0];
++		val += (daddr + instrlen);
++		sym = find_symbol(val);
++		if (sym)
++			sprintf(s,"%s",sym);
++		else
++			sprintf(s,"0x%4.4x",val);
++		return 1;
++		break;
++	case ST8_SHORTMEM:
++		val = buf[0];
++		sym = find_symbol(val);
++		if (sym)
++			sprintf(s,"%s",sym);
++		else
++			sprintf(s,"0x%2.2x",val);
++		return 1;
++		break;
++	case ST8_INDX:
++		sprintf(s,"(X)");
++		break;
++	case ST8_SHORTOFF_X:
++		val = buf[0];
++		sym = find_symbol(val);
++		if (sym)
++			sprintf(s,"(%s,X)",sym);
++		else
++			sprintf(s,"(0x%2.2x,X)",val);
++		return 1;
++		break;
++	case ST8_INDY:
++		sprintf(s,"(Y)");
++		break;
++	case ST8_SHORTOFF_Y:
++		val = buf[0];
++		sym = find_symbol(val);
++		if (sym)
++			sprintf(s,"(%s,Y)",sym);
++		else
++			sprintf(s,"(0x%2.2x,Y)",val);
++		return 1;
++		break;
++	case ST8_SHORTOFF_SP:
++		val = buf[0];
++		sym = find_symbol(val);
++		if (sym)
++			sprintf(s,"(%s,SP)",sym);
++		else
++			sprintf(s,"(0x%2.2x,SP)",val);
++		return 1;
++		break;
++	case ST8_SHORTPTRW:
++		val = buf[0];
++		sym = find_symbol(val);
++		if (sym)
++			sprintf(s,"[%s.w]",sym);
++		else
++			sprintf(s,"[0x%2.2x.w]",val);
++		return 1;
++		break;
++	case ST8_SHORTPTRW_X:
++		val = buf[0];
++		sym = find_symbol(val);
++		if (sym)
++			sprintf(s,"([%s.w],X)",sym);
++		else
++			sprintf(s,"([0x%2.2x.w],X)",val);
++		return 1;
++		break;
++	case ST8_SHORTPTRW_Y:
++		val = buf[0];
++		sym = find_symbol(val);
++		if (sym)
++			sprintf(s,"([%s.w],Y)",sym);
++		else
++			sprintf(s,"([0x%2.2x.w],Y)",val);
++		return 1;
++		break;
++	case ST8_LONGMEM:
++		val = (buf[0]<<8)+buf[1];
++		sym = find_symbol(val);
++		if (sym)
++			sprintf(s,"%s",sym);
++		else
++			sprintf(s,"0x%4.4x",val);
++		return 2;
++		break;
++	case ST8_LONGOFF_X:
++		val = (buf[0]<<8)+buf[1];
++		sym = find_symbol(val);
++		if (sym)
++			sprintf(s,"(%s,X)",sym);
++		else
++			sprintf(s,"(0x%4.4x,X)",val);
++		return 2;
++		break;
++	case ST8_LONGOFF_Y:
++		val = (buf[0]<<8)+buf[1];
++		sym = find_symbol(val);
++		if (sym)
++			sprintf(s,"(%s,Y)",sym);
++		else
++			sprintf(s,"(0x%4.4x,Y)",val);
++		return 2;
++		break;
++	case ST8_LONGPTRW:
++		val = (buf[0]<<8)+buf[1];
++		sym = find_symbol(val);
++		if (sym)
++			sprintf(s,"[%s.w]",sym);
++		else
++			sprintf(s,"[0x%4.4x.w]",val);
++		return 2;
++		break;
++	case ST8_LONGPTRW_X:
++		val = (buf[0]<<8)+buf[1];
++		sym = find_symbol(val);
++		if (sym)
++			sprintf(s,"([%s.w],X)",sym);
++		else
++			sprintf(s,"([0x%4.4x.w],X)",val);
++		return 2;
++		break;
++	case ST8_LONGPTRW_Y:
++		val = (buf[0]<<8)+buf[1];
++		sym = find_symbol(val);
++		if (sym)
++			sprintf(s,"([%s.w],Y)",sym);
++		else
++			sprintf(s,"([0x%4.4x.w],Y)",val);
++		return 2;
++		break;
++	case ST8_LONGPTRE:
++		val = (buf[0]<<8)+buf[1];
++		sym = find_symbol(val);
++		if (sym)
++			sprintf(s,"[%s.e]",sym);
++		else
++			sprintf(s,"[0x%4.4x.e]",val);
++		return 2;
++		break;
++	case ST8_LONGPTRE_X:
++		val = (buf[0]<<8)+buf[1];
++		sym = find_symbol(val);
++		if (sym)
++			sprintf(s,"([%s.e],X)",sym);
++		else
++			sprintf(s,"([0x%4.4x.e],X)",val);
++		return 2;
++		break;
++	case ST8_LONGPTRE_Y:
++		val = (buf[0]<<8)+buf[1];
++		sym = find_symbol(val);
++		if (sym)
++			sprintf(s,"([%s.e],Y)",sym);
++		else
++			sprintf(s,"([0x%4.4x.e],Y)",val);
++		return 2;
++		break;
++	case ST8_EXTMEM:
++		val = (buf[0]<<16)+(buf[1]<<8)+buf[2];
++//		if (find_symbol_x(val))
++//			dinfo->print_address_func(val,dinfo);
++		sym = find_symbol(val);
++		if (sym)
++			sprintf(s,"%s",sym);
++		else
++			sprintf(s,"0x%6.6x",val);
++		return 3;
++		break;
++	case ST8_EXTOFF_X:
++		val = (buf[0]<<16)+(buf[1]<<8)+buf[2];
++		sym = find_symbol(val);
++		if (sym)
++			sprintf(s,"(%s,X)",sym);
++		else
++			sprintf(s,"(0x%6.6x,X)",val);
++		return 3;
++		break;
++	case ST8_EXTOFF_Y:
++		val = (buf[0]<<16)+(buf[1]<<8)+buf[2];
++		sym = find_symbol(val);
++		if (sym)
++			sprintf(s,"(%s,Y)",sym);
++		else
++			sprintf(s,"(0x%6.6x,Y)",val);
++		return 3;
++		break;
++	case ST8_END:
++		break;
++	}
++	return 0;
++}
++
++int stm8_dis(bfd_vma addr, unsigned int op)
++{
++	unsigned char buf[8];
++	unsigned char *bufp;
++	char s[256];
++	int i=0;
++	int j;
++	char c;
++	int operandlen;
++
++	while (stm8_opcodes[i].name)
++	{
++		if (op == stm8_opcodes[i].bin_opcode)
++		{
++			bufp=buf;
++			s[0] = 0;
++			dinfo->fprintf_func(dinfo->stream, "%s",stm8_opcodes[i].name);
++			operandlen = stm8_compute_insn_size(stm8_opcodes[i])-stm8_opcode_size(op);
++			instrlen += operandlen;
++			if (fetch_data(buf,addr,dinfo,operandlen))
++				return 0;
++			lastlabeladdr = 0;
++			for (j=0;j<5;j++)
++			{
++				s[0]=0;
++				bufp+=stm8_operands(s, bufp, stm8_opcodes[i].constraints[j]);
++				if (s[0])
++				{
++					if (j==0) c=' '; else c=',';
++					dinfo->fprintf_func(dinfo->stream, "%c%s",c,s);
++				}
++			}
++			if (lastlabeladdr)
++			{
++				dinfo->fprintf_func(dinfo->stream, " ;");
++				dinfo->print_address_func(lastlabeladdr, dinfo);
++			}
++			return operandlen;
++		}
++		i++;
++	}
++	return 0;
++}
++
++#define PDY 0x90
++#define PIX 0x92
++#define PIY 0x91
++#define PWSP 0x72
++
++int print_insn_stm8 (bfd_vma addr, disassemble_info *info)
++{
++	unsigned int op;
++
++	instrlen = 0;
++	dinfo = info;
++	daddr = addr;
++	if (!fetch_data(buffer, addr, info, 1))
++	{
++		op = buffer[0];
++		instrlen++;
++		if ((buffer[0]==PDY) || (buffer[0]==PIX) || (buffer[0]==PIY) || (buffer[0]==PWSP))
++		{
++			if (fetch_data(buffer, addr, info, 2))
++				return -1;
++			instrlen++;
++			op = buffer[0]<<8;
++			op += buffer[1];
++		}
++		stm8_dis(addr+instrlen, op);
++	}
++	return instrlen;
++}
+diff --git a/opcodes/stm8-opc.c b/opcodes/stm8-opc.c
+new file mode 100644
+index 0000000000..3a600d66d3
+--- /dev/null
++++ b/opcodes/stm8-opc.c
+@@ -0,0 +1,799 @@
++/* stm8-opc.c -- Table of opcodes for the STM8 processor.
++   Copyright (C) 2007-2016 Free Software Foundation, Inc.
++   Contributed by Ake Rehnman ake dot rehnman (at) gmail dot com
++
++   This file is part of the GNU opcodes library.
++
++   This library is free software; you can redistribute it and/or modify
++   it under the terms of the GNU General Public License as published by
++   the Free Software Foundation; either version 3, or (at your option)
++   any later version.
++
++   It is distributed in the hope that it will be useful, but WITHOUT
++   ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
++   or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public
++   License for more details.
++
++   You should have received a copy of the GNU General Public License
++   along with this program; if not, write to the Free Software Foundation,
++   Inc., 51 Franklin Street - Fifth Floor, Boston, MA 02110-1301, USA.  */
++
++#include <stdio.h>
++#include "libiberty.h"
++#include "symcat.h"
++#include "opcode/stm8.h"
++
++const struct stm8_opcodes_s stm8_opcodes[] =
++{
++//nop
++{"nop", {}, 0x9D},
++//adc
++{"adc", {ST8_REG_A, ST8_BYTE}, 0xA9},
++{"adc", {ST8_REG_A, ST8_SHORTMEM}, 0xB9},
++{"adc", {ST8_REG_A, ST8_LONGMEM}, 0xC9},
++{"adc", {ST8_REG_A, ST8_INDX}, 0xF9},
++{"adc", {ST8_REG_A, ST8_SHORTOFF_X}, 0xE9},
++{"adc", {ST8_REG_A, ST8_LONGOFF_X}, 0xD9},
++{"adc", {ST8_REG_A, ST8_INDY}, 0x90F9},
++{"adc", {ST8_REG_A, ST8_SHORTOFF_Y}, 0x90E9},
++{"adc", {ST8_REG_A, ST8_LONGOFF_Y}, 0x90D9},
++{"adc", {ST8_REG_A, ST8_SHORTOFF_SP}, 0x19},
++{"adc", {ST8_REG_A, ST8_SHORTPTRW}, 0x92C9},
++{"adc", {ST8_REG_A, ST8_LONGPTRW}, 0x72C9},
++{"adc", {ST8_REG_A, ST8_SHORTPTRW_X}, 0x92D9},
++{"adc", {ST8_REG_A, ST8_LONGPTRW_X}, 0x72D9},
++{"adc", {ST8_REG_A, ST8_SHORTPTRW_Y}, 0x91D9},
++//add
++{"add", {ST8_REG_A, ST8_BYTE}, 0xAB},
++{"add", {ST8_REG_A, ST8_SHORTMEM}, 0xBB},
++{"add", {ST8_REG_A, ST8_LONGMEM}, 0xCB},
++{"add", {ST8_REG_A, ST8_INDX}, 0xFB},
++{"add", {ST8_REG_A, ST8_SHORTOFF_X}, 0xEB},
++{"add", {ST8_REG_A, ST8_LONGOFF_X}, 0xDB},
++{"add", {ST8_REG_A, ST8_INDY}, 0x90FB},
++{"add", {ST8_REG_A, ST8_SHORTOFF_Y}, 0x90EB},
++{"add", {ST8_REG_A, ST8_LONGOFF_Y}, 0x90DB},
++{"add", {ST8_REG_A, ST8_SHORTOFF_SP}, 0x1B},
++{"add", {ST8_REG_A, ST8_SHORTPTRW}, 0x92CB},
++{"add", {ST8_REG_A, ST8_LONGPTRW}, 0x72CB},
++{"add", {ST8_REG_A, ST8_SHORTPTRW_X}, 0x92DB},
++{"add", {ST8_REG_A, ST8_LONGPTRW_X}, 0x72DB},
++{"add", {ST8_REG_A, ST8_SHORTPTRW_Y}, 0x91DB},
++//addw
++{"addw", {ST8_REG_X, ST8_WORD}, 0x1C},
++{"addw", {ST8_REG_X, ST8_LONGMEM}, 0x72BB},
++{"addw", {ST8_REG_X, ST8_SHORTOFF_SP}, 0x72FB},
++{"addw", {ST8_REG_Y, ST8_WORD}, 0x72A9},
++{"addw", {ST8_REG_Y, ST8_LONGMEM}, 0x72B9},
++{"addw", {ST8_REG_Y, ST8_SHORTOFF_SP}, 0x72F9},
++{"addw", {ST8_REG_SP, ST8_BYTE}, 0x5B},
++//and
++{"and", {ST8_REG_A, ST8_BYTE}, 0xA4},
++{"and", {ST8_REG_A, ST8_SHORTMEM}, 0xB4},
++{"and", {ST8_REG_A, ST8_LONGMEM}, 0xC4},
++{"and", {ST8_REG_A, ST8_INDX}, 0xF4},
++{"and", {ST8_REG_A, ST8_SHORTOFF_X}, 0xE4},
++{"and", {ST8_REG_A, ST8_LONGOFF_X}, 0xD4},
++{"and", {ST8_REG_A, ST8_INDY}, 0x90F4},
++{"and", {ST8_REG_A, ST8_SHORTOFF_Y}, 0x90E4},
++{"and", {ST8_REG_A, ST8_LONGOFF_Y}, 0x90D4},
++{"and", {ST8_REG_A, ST8_SHORTOFF_SP}, 0x14},
++{"and", {ST8_REG_A, ST8_SHORTPTRW}, 0x92C4},
++{"and", {ST8_REG_A, ST8_LONGPTRW}, 0x72C4},
++{"and", {ST8_REG_A, ST8_SHORTPTRW_X}, 0x92D4},
++{"and", {ST8_REG_A, ST8_LONGPTRW_X}, 0x72D4},
++{"and", {ST8_REG_A, ST8_SHORTPTRW_Y}, 0x91D4},
++//bccm
++//{"bccm", {ST8_LONGMEM, ST8_BYTE}, 0x90xx},
++//bcp
++{"bcp", {ST8_REG_A, ST8_BYTE}, 0xA5},
++{"bcp", {ST8_REG_A, ST8_SHORTMEM}, 0xB5},
++{"bcp", {ST8_REG_A, ST8_LONGMEM}, 0xC5},
++{"bcp", {ST8_REG_A, ST8_INDX}, 0xF5},
++{"bcp", {ST8_REG_A, ST8_SHORTOFF_X}, 0xE5},
++{"bcp", {ST8_REG_A, ST8_LONGOFF_X}, 0xD5},
++{"bcp", {ST8_REG_A, ST8_INDY}, 0x90F5},
++{"bcp", {ST8_REG_A, ST8_SHORTOFF_Y}, 0x90E5},
++{"bcp", {ST8_REG_A, ST8_LONGOFF_Y}, 0x90D5},
++{"bcp", {ST8_REG_A, ST8_SHORTOFF_SP}, 0x15},
++{"bcp", {ST8_REG_A, ST8_SHORTPTRW}, 0x92C5},
++{"bcp", {ST8_REG_A, ST8_LONGPTRW}, 0x72C5},
++{"bcp", {ST8_REG_A, ST8_SHORTPTRW_X}, 0x92D5},
++{"bcp", {ST8_REG_A, ST8_LONGPTRW_X}, 0x72D5},
++{"bcp", {ST8_REG_A, ST8_SHORTPTRW_Y}, 0x91D5},
++//bcpl
++{"bcpl", {ST8_LONGMEM, ST8_BIT_0}, 0x9010},
++{"bcpl", {ST8_LONGMEM, ST8_BIT_1}, 0x9012},
++{"bcpl", {ST8_LONGMEM, ST8_BIT_2}, 0x9014},
++{"bcpl", {ST8_LONGMEM, ST8_BIT_3}, 0x9016},
++{"bcpl", {ST8_LONGMEM, ST8_BIT_4}, 0x9018},
++{"bcpl", {ST8_LONGMEM, ST8_BIT_5}, 0x901a},
++{"bcpl", {ST8_LONGMEM, ST8_BIT_6}, 0x901c},
++{"bcpl", {ST8_LONGMEM, ST8_BIT_7}, 0x901e},
++//break
++{"break", {}, 0x8B},
++//bres
++{"bres", {ST8_LONGMEM, ST8_BIT_0}, 0x7211},
++{"bres", {ST8_LONGMEM, ST8_BIT_1}, 0x7213},
++{"bres", {ST8_LONGMEM, ST8_BIT_2}, 0x7215},
++{"bres", {ST8_LONGMEM, ST8_BIT_3}, 0x7217},
++{"bres", {ST8_LONGMEM, ST8_BIT_4}, 0x7219},
++{"bres", {ST8_LONGMEM, ST8_BIT_5}, 0x721b},
++{"bres", {ST8_LONGMEM, ST8_BIT_6}, 0x721d},
++{"bres", {ST8_LONGMEM, ST8_BIT_7}, 0x721f},
++//bset
++{"bset", {ST8_LONGMEM, ST8_BIT_0}, 0x7210},
++{"bset", {ST8_LONGMEM, ST8_BIT_1}, 0x7212},
++{"bset", {ST8_LONGMEM, ST8_BIT_2}, 0x7214},
++{"bset", {ST8_LONGMEM, ST8_BIT_3}, 0x7216},
++{"bset", {ST8_LONGMEM, ST8_BIT_4}, 0x7218},
++{"bset", {ST8_LONGMEM, ST8_BIT_5}, 0x721a},
++{"bset", {ST8_LONGMEM, ST8_BIT_6}, 0x721c},
++{"bset", {ST8_LONGMEM, ST8_BIT_7}, 0x721e},
++//btjf
++{"btjf", {ST8_LONGMEM, ST8_BIT_0, ST8_PCREL}, 0x7201},
++{"btjf", {ST8_LONGMEM, ST8_BIT_1, ST8_PCREL}, 0x7203},
++{"btjf", {ST8_LONGMEM, ST8_BIT_2, ST8_PCREL}, 0x7205},
++{"btjf", {ST8_LONGMEM, ST8_BIT_3, ST8_PCREL}, 0x7207},
++{"btjf", {ST8_LONGMEM, ST8_BIT_4, ST8_PCREL}, 0x7209},
++{"btjf", {ST8_LONGMEM, ST8_BIT_5, ST8_PCREL}, 0x720b},
++{"btjf", {ST8_LONGMEM, ST8_BIT_6, ST8_PCREL}, 0x720d},
++{"btjf", {ST8_LONGMEM, ST8_BIT_7, ST8_PCREL}, 0x720f},
++//btjt
++{"btjt", {ST8_LONGMEM, ST8_BIT_0, ST8_PCREL}, 0x7200},
++{"btjt", {ST8_LONGMEM, ST8_BIT_1, ST8_PCREL}, 0x7202},
++{"btjt", {ST8_LONGMEM, ST8_BIT_2, ST8_PCREL}, 0x7204},
++{"btjt", {ST8_LONGMEM, ST8_BIT_3, ST8_PCREL}, 0x7206},
++{"btjt", {ST8_LONGMEM, ST8_BIT_4, ST8_PCREL}, 0x7208},
++{"btjt", {ST8_LONGMEM, ST8_BIT_5, ST8_PCREL}, 0x720a},
++{"btjt", {ST8_LONGMEM, ST8_BIT_6, ST8_PCREL}, 0x720c},
++{"btjt", {ST8_LONGMEM, ST8_BIT_7, ST8_PCREL}, 0x720e},
++//call
++{"call", {ST8_LONGMEM}, 0xCD},
++{"call", {ST8_INDX}, 0xFD},
++{"call", {ST8_SHORTOFF_X}, 0xED},
++{"call", {ST8_LONGOFF_X}, 0xDD},
++{"call", {ST8_INDY}, 0x90FD},
++{"call", {ST8_SHORTOFF_Y}, 0x90ED},
++{"call", {ST8_LONGOFF_Y}, 0x90DD},
++{"call", {ST8_SHORTPTRW}, 0x92CD},
++{"call", {ST8_LONGPTRW}, 0x72CD},
++{"call", {ST8_SHORTPTRW_X}, 0x92DD},
++{"call", {ST8_LONGPTRW_X}, 0x72DD},
++{"call", {ST8_SHORTPTRW_Y}, 0x91DD},
++//callf
++{"callf", {ST8_EXTMEM}, 0x8D},
++{"callf", {ST8_LONGPTRE}, 0x928D},
++//callr
++{"callr", {ST8_PCREL}, 0xAD},
++//ccf
++{"ccf", {}, 0x8C},
++//clr
++{"clr", {ST8_REG_A}, 0x4F},
++{"clr", {ST8_SHORTMEM}, 0x3F},
++{"clr", {ST8_LONGMEM}, 0x725F},
++{"clr", {ST8_INDX}, 0x7F},
++{"clr", {ST8_SHORTOFF_X}, 0x6F},
++{"clr", {ST8_LONGOFF_X}, 0x724F},
++{"clr", {ST8_INDY}, 0x907F},
++{"clr", {ST8_SHORTOFF_Y}, 0x906F},
++{"clr", {ST8_LONGOFF_Y}, 0x904F},
++{"clr", {ST8_SHORTOFF_SP}, 0x0F},
++{"clr", {ST8_SHORTPTRW}, 0x923F},
++{"clr", {ST8_LONGPTRW}, 0x723F},
++{"clr", {ST8_SHORTPTRW_X}, 0x926F},
++{"clr", {ST8_LONGPTRW_X}, 0x726F},
++{"clr", {ST8_SHORTPTRW_Y}, 0x916F},
++//clrw
++{"clrw", {ST8_REG_X}, 0x5F},
++{"clrw", {ST8_REG_Y}, 0x905F},
++//cp
++{"cp", {ST8_REG_A, ST8_BYTE}, 0xA1},
++{"cp", {ST8_REG_A, ST8_SHORTMEM}, 0xB1},
++{"cp", {ST8_REG_A, ST8_LONGMEM}, 0xC1},
++{"cp", {ST8_REG_A, ST8_INDX}, 0xF1},
++{"cp", {ST8_REG_A, ST8_SHORTOFF_X}, 0xE1},
++{"cp", {ST8_REG_A, ST8_LONGOFF_X}, 0xD1},
++{"cp", {ST8_REG_A, ST8_INDY}, 0x90F1},
++{"cp", {ST8_REG_A, ST8_SHORTOFF_Y}, 0x90E1},
++{"cp", {ST8_REG_A, ST8_LONGOFF_Y}, 0x90D1},
++{"cp", {ST8_REG_A, ST8_SHORTOFF_SP}, 0x11},
++{"cp", {ST8_REG_A, ST8_SHORTPTRW}, 0x92C1},
++{"cp", {ST8_REG_A, ST8_LONGPTRW}, 0x72C1},
++{"cp", {ST8_REG_A, ST8_SHORTPTRW_X}, 0x92D1},
++{"cp", {ST8_REG_A, ST8_LONGPTRW_X}, 0x72D1},
++{"cp", {ST8_REG_A, ST8_SHORTPTRW_Y}, 0x91D1},
++//cpw
++{"cpw", {ST8_REG_X, ST8_WORD}, 0xA3},
++{"cpw", {ST8_REG_X, ST8_SHORTMEM}, 0xB3},
++{"cpw", {ST8_REG_X, ST8_LONGMEM}, 0xC3},
++{"cpw", {ST8_REG_X, ST8_INDY}, 0x90F3},
++{"cpw", {ST8_REG_X, ST8_SHORTOFF_Y}, 0x90E3},
++{"cpw", {ST8_REG_X, ST8_LONGOFF_Y}, 0x90D3},
++{"cpw", {ST8_REG_X, ST8_SHORTOFF_SP}, 0x13},
++{"cpw", {ST8_REG_X, ST8_SHORTPTRW}, 0x92C3},
++{"cpw", {ST8_REG_X, ST8_LONGPTRW}, 0x72C3},
++{"cpw", {ST8_REG_X, ST8_SHORTPTRW_Y}, 0x91D3},
++{"cpw", {ST8_REG_Y, ST8_WORD}, 0x90A3},
++{"cpw", {ST8_REG_Y, ST8_SHORTMEM}, 0x90B3},
++{"cpw", {ST8_REG_Y, ST8_LONGMEM}, 0x90C3},
++{"cpw", {ST8_REG_Y, ST8_INDX}, 0xF3},
++{"cpw", {ST8_REG_Y, ST8_SHORTOFF_X}, 0xE3},
++{"cpw", {ST8_REG_Y, ST8_LONGOFF_X}, 0xD3},
++{"cpw", {ST8_REG_Y, ST8_SHORTPTRW}, 0x91C3},
++{"cpw", {ST8_REG_Y, ST8_LONGPTRW}, 0x92D3},
++{"cpw", {ST8_REG_Y, ST8_SHORTPTRW_X}, 0x72D3},
++//cpl
++{"cpl", {ST8_REG_A}, 0x43},
++{"cpl", {ST8_SHORTMEM}, 0x33},
++{"cpl", {ST8_LONGMEM}, 0x7253},
++{"cpl", {ST8_INDX}, 0x73},
++{"cpl", {ST8_SHORTOFF_X}, 0x63},
++{"cpl", {ST8_LONGOFF_X}, 0x7243},
++{"cpl", {ST8_INDY}, 0x9073},
++{"cpl", {ST8_SHORTOFF_Y}, 0x9063},
++{"cpl", {ST8_LONGOFF_Y}, 0x9043},
++{"cpl", {ST8_SHORTOFF_SP}, 0x03},
++{"cpl", {ST8_SHORTPTRW}, 0x9233},
++{"cpl", {ST8_LONGPTRW}, 0x7233},
++{"cpl", {ST8_SHORTPTRW_X}, 0x9263},
++{"cpl", {ST8_LONGPTRW_X}, 0x7263},
++{"cpl", {ST8_SHORTPTRW_Y}, 0x9163},
++//cplw
++{"clrw", {ST8_REG_X}, 0x53},
++{"clrw", {ST8_REG_Y}, 0x9053},
++//dec
++{"dec", {ST8_REG_A}, 0x4A},
++{"dec", {ST8_SHORTMEM}, 0x3A},
++{"dec", {ST8_LONGMEM}, 0x725A},
++{"dec", {ST8_INDX}, 0x7A},
++{"dec", {ST8_SHORTOFF_X}, 0x6A},
++{"dec", {ST8_LONGOFF_X}, 0x724A},
++{"dec", {ST8_INDY}, 0x907A},
++{"dec", {ST8_SHORTOFF_Y}, 0x906A},
++{"dec", {ST8_LONGOFF_Y}, 0x904A},
++{"dec", {ST8_SHORTOFF_SP}, 0x0A},
++{"dec", {ST8_SHORTPTRW}, 0x923A},
++{"dec", {ST8_LONGPTRW}, 0x723A},
++{"dec", {ST8_SHORTPTRW_X}, 0x926A},
++{"dec", {ST8_LONGPTRW_X}, 0x726A},
++{"dec", {ST8_SHORTPTRW_Y}, 0x916A},
++//decw
++{"decw", {ST8_REG_X}, 0x5A},
++{"decw", {ST8_REG_Y}, 0x905A},
++//div
++{"div", {ST8_REG_X, ST8_REG_A}, 0x62},
++{"div", {ST8_REG_Y, ST8_REG_A}, 0x9062},
++//divw
++{"divw", {ST8_REG_X, ST8_REG_Y}, 0x65},
++//exg
++{"exg", {ST8_REG_A, ST8_REG_XL}, 0x41},
++{"exg", {ST8_REG_A, ST8_REG_YL}, 0x61},
++{"exg", {ST8_REG_A, ST8_LONGMEM}, 0x31},
++//exgw
++{"exgw", {ST8_REG_X, ST8_REG_Y}, 0x51},
++//halt
++{"halt", {}, 0x8E},
++//inc
++{"inc", {ST8_REG_A}, 0x4C},
++{"inc", {ST8_SHORTMEM}, 0x3C},
++{"inc", {ST8_LONGMEM}, 0x725C},
++{"inc", {ST8_INDX}, 0x7C},
++{"inc", {ST8_SHORTOFF_X}, 0x6C},
++{"inc", {ST8_LONGOFF_X}, 0x724C},
++{"inc", {ST8_INDY}, 0x907C},
++{"inc", {ST8_SHORTOFF_Y}, 0x906C},
++{"inc", {ST8_LONGOFF_Y}, 0x904C},
++{"inc", {ST8_SHORTOFF_SP}, 0x0C},
++{"inc", {ST8_SHORTPTRW}, 0x923C},
++{"inc", {ST8_LONGPTRW}, 0x723C},
++{"inc", {ST8_SHORTPTRW_X}, 0x926C},
++{"inc", {ST8_LONGPTRW_X}, 0x726C},
++{"inc", {ST8_SHORTPTRW_Y}, 0x916C},
++//incw
++{"incw", {ST8_REG_X}, 0x5C},
++{"incw", {ST8_REG_Y}, 0x905C},
++//int
++{"int", {ST8_EXTMEM}, 0x82},
++//iret
++{"iret", {}, 0x80},
++//jp
++{"jp", {ST8_LONGMEM}, 0xCC},
++{"jp", {ST8_INDX}, 0xFC},
++{"jp", {ST8_SHORTOFF_X}, 0xEC},
++{"jp", {ST8_LONGOFF_X}, 0xDC},
++{"jp", {ST8_INDY}, 0x90FC},
++{"jp", {ST8_SHORTOFF_Y}, 0x90EC},
++{"jp", {ST8_LONGOFF_Y}, 0x90DC},
++{"jp", {ST8_SHORTPTRW}, 0x92CC},
++{"jp", {ST8_LONGPTRW}, 0x72CC},
++{"jp", {ST8_SHORTPTRW_X}, 0x92DC},
++{"jp", {ST8_LONGPTRW_X}, 0x72DC},
++{"jp", {ST8_SHORTPTRW_Y}, 0x91DC},
++//jpf
++{"jpf", {ST8_EXTMEM}, 0xAC},
++{"jpf", {ST8_LONGPTRE}, 0x92AC},
++//jrxx
++{"jra", {ST8_PCREL}, 0x20},
++{"jrc", {ST8_PCREL}, 0x25},
++{"jreq", {ST8_PCREL}, 0x27},
++{"jrf", {ST8_PCREL}, 0x21},
++{"jrh", {ST8_PCREL}, 0x9029},
++{"jrih", {ST8_PCREL}, 0x902F},
++{"jril", {ST8_PCREL}, 0x902E},
++{"jrm", {ST8_PCREL}, 0x902D},
++{"jrmi", {ST8_PCREL}, 0x2B},
++{"jrnc", {ST8_PCREL}, 0x24},
++{"jrne", {ST8_PCREL}, 0x26},
++{"jrnh", {ST8_PCREL}, 0x9028},
++{"jrnm", {ST8_PCREL}, 0x902C},
++{"jrnv", {ST8_PCREL}, 0x28},
++{"jrpl", {ST8_PCREL}, 0x2A},
++{"jrsge", {ST8_PCREL}, 0x2E},
++{"jrsgt", {ST8_PCREL}, 0x2C},
++{"jrsle", {ST8_PCREL}, 0x2D},
++{"jrslt", {ST8_PCREL}, 0x2F},
++{"jrt", {ST8_PCREL}, 0x20},
++{"jruge", {ST8_PCREL}, 0x24},
++{"jrugt", {ST8_PCREL}, 0x22},
++{"jrule", {ST8_PCREL}, 0x23},
++{"jrult", {ST8_PCREL}, 0x25},
++{"jrv", {ST8_PCREL}, 0x29},
++//ld
++{"ld", {ST8_REG_A, ST8_BYTE}, 0xA6},
++{"ld", {ST8_REG_A, ST8_SHORTMEM}, 0xB6},
++{"ld", {ST8_REG_A, ST8_LONGMEM}, 0xC6},
++{"ld", {ST8_REG_A, ST8_INDX}, 0xF6},
++{"ld", {ST8_REG_A, ST8_SHORTOFF_X}, 0xE6},
++{"ld", {ST8_REG_A, ST8_LONGOFF_X}, 0xD6},
++{"ld", {ST8_REG_A, ST8_INDY}, 0x90F6},
++{"ld", {ST8_REG_A, ST8_SHORTOFF_Y}, 0x90E6},
++{"ld", {ST8_REG_A, ST8_LONGOFF_Y}, 0x90D6},
++{"ld", {ST8_REG_A, ST8_SHORTOFF_SP}, 0x7B},
++{"ld", {ST8_REG_A, ST8_SHORTPTRW}, 0x92C6},
++{"ld", {ST8_REG_A, ST8_LONGPTRW}, 0x72C6},
++{"ld", {ST8_REG_A, ST8_SHORTPTRW_X}, 0x92D6},
++{"ld", {ST8_REG_A, ST8_LONGPTRW_X}, 0x72D6},
++{"ld", {ST8_REG_A, ST8_SHORTPTRW_Y}, 0x91D6},
++{"ld", {ST8_SHORTMEM, ST8_REG_A}, 0xB7},
++{"ld", {ST8_LONGMEM, ST8_REG_A}, 0xC7},
++{"ld", {ST8_INDX, ST8_REG_A}, 0xF7},
++{"ld", {ST8_SHORTOFF_X, ST8_REG_A}, 0xE7},
++{"ld", {ST8_LONGOFF_X, ST8_REG_A}, 0xD7},
++{"ld", {ST8_INDY, ST8_REG_A}, 0x90F7},
++{"ld", {ST8_SHORTOFF_Y, ST8_REG_A}, 0x90E7},
++{"ld", {ST8_LONGOFF_Y, ST8_REG_A}, 0x90D7},
++{"ld", {ST8_SHORTOFF_SP, ST8_REG_A}, 0x6B},
++{"ld", {ST8_SHORTPTRW, ST8_REG_A}, 0x92C7},
++{"ld", {ST8_LONGPTRW, ST8_REG_A}, 0x72C7},
++{"ld", {ST8_SHORTPTRW_X, ST8_REG_A}, 0x92D7},
++{"ld", {ST8_LONGPTRW_X, ST8_REG_A}, 0x72D7},
++{"ld", {ST8_SHORTPTRW_Y, ST8_REG_A}, 0x91D7},
++{"ld", {ST8_REG_XL, ST8_REG_A}, 0x97},
++{"ld", {ST8_REG_A, ST8_REG_XL}, 0x9F},
++{"ld", {ST8_REG_YL, ST8_REG_A}, 0x9097},
++{"ld", {ST8_REG_A, ST8_REG_YL}, 0x909F},
++{"ld", {ST8_REG_XH, ST8_REG_A}, 0x95},
++{"ld", {ST8_REG_A, ST8_REG_XH}, 0x9E},
++{"ld", {ST8_REG_YH, ST8_REG_A}, 0x9095},
++{"ld", {ST8_REG_A, ST8_REG_YH}, 0x909E},
++//ldf
++{"ldf", {ST8_REG_A, ST8_EXTMEM}, 0xBC},
++{"ldf", {ST8_REG_A, ST8_EXTOFF_X}, 0xAF},
++{"ldf", {ST8_REG_A, ST8_EXTOFF_Y}, 0x90AF},
++{"ldf", {ST8_REG_A, ST8_LONGPTRE_X}, 0x92AF},
++{"ldf", {ST8_REG_A, ST8_LONGPTRE_Y}, 0x91AF},
++{"ldf", {ST8_REG_A, ST8_LONGPTRE}, 0x92BC},
++{"ldf", {ST8_EXTMEM, ST8_REG_A}, 0xBD},
++{"ldf", {ST8_EXTOFF_X, ST8_REG_A}, 0xA7},
++{"ldf", {ST8_EXTOFF_Y, ST8_REG_A}, 0x90A7},
++{"ldf", {ST8_LONGPTRE_X, ST8_REG_A}, 0x92A7},
++{"ldf", {ST8_LONGPTRE_Y, ST8_REG_A}, 0x91A7},
++{"ldf", {ST8_LONGPTRE, ST8_REG_A}, 0x92BD},
++//ldw
++{"ldw", {ST8_REG_X, ST8_WORD}, 0xAE},
++{"ldw", {ST8_REG_X, ST8_SHORTMEM}, 0xBE},
++{"ldw", {ST8_REG_X, ST8_LONGMEM}, 0xCE},
++{"ldw", {ST8_REG_X, ST8_INDX}, 0xFE},
++{"ldw", {ST8_REG_X, ST8_SHORTOFF_X}, 0xEE},
++{"ldw", {ST8_REG_X, ST8_LONGOFF_X}, 0xDE},
++{"ldw", {ST8_REG_X, ST8_SHORTOFF_SP}, 0x1E},
++{"ldw", {ST8_REG_X, ST8_SHORTPTRW}, 0x92CE},
++{"ldw", {ST8_REG_X, ST8_LONGPTRW}, 0x72CE},
++{"ldw", {ST8_REG_X, ST8_SHORTPTRW_X}, 0x92DE},
++{"ldw", {ST8_REG_X, ST8_LONGPTRW_X}, 0x72DE},
++{"ldw", {ST8_SHORTMEM, ST8_REG_X}, 0xBF},
++{"ldw", {ST8_LONGMEM, ST8_REG_X}, 0xCF},
++{"ldw", {ST8_INDX, ST8_REG_Y}, 0xFF},
++{"ldw", {ST8_SHORTOFF_X, ST8_REG_Y}, 0xEF},
++{"ldw", {ST8_LONGOFF_X, ST8_REG_Y}, 0xDF},
++{"ldw", {ST8_SHORTOFF_SP, ST8_REG_X}, 0x1F},
++{"ldw", {ST8_SHORTPTRW, ST8_REG_X}, 0x92CF},
++{"ldw", {ST8_LONGPTRW, ST8_REG_X}, 0x72CF},
++{"ldw", {ST8_SHORTPTRW_X, ST8_REG_Y}, 0x92DF},
++{"ldw", {ST8_LONGPTRW_X, ST8_REG_Y}, 0x72DF},
++{"ldw", {ST8_REG_Y, ST8_WORD}, 0x90AE},
++{"ldw", {ST8_REG_Y, ST8_SHORTMEM}, 0x90BE},
++{"ldw", {ST8_REG_Y, ST8_LONGMEM}, 0x90CE},
++{"ldw", {ST8_REG_Y, ST8_INDY}, 0x90FE},
++{"ldw", {ST8_REG_Y, ST8_SHORTOFF_Y}, 0x90EE},
++{"ldw", {ST8_REG_Y, ST8_LONGOFF_Y}, 0x90DE},
++{"ldw", {ST8_REG_Y, ST8_SHORTOFF_SP}, 0x16},
++{"ldw", {ST8_REG_Y, ST8_SHORTPTRW}, 0x91CE},
++{"ldw", {ST8_REG_Y, ST8_SHORTPTRW_Y}, 0x91DE},
++{"ldw", {ST8_SHORTMEM, ST8_REG_Y}, 0x90BF},
++{"ldw", {ST8_LONGMEM, ST8_REG_Y}, 0x90CF},
++{"ldw", {ST8_INDY, ST8_REG_X}, 0x90FF},
++{"ldw", {ST8_SHORTOFF_Y, ST8_REG_X}, 0x90EF},
++{"ldw", {ST8_LONGOFF_Y, ST8_REG_X}, 0x90DF},
++{"ldw", {ST8_SHORTOFF_SP, ST8_REG_Y}, 0x17},
++{"ldw", {ST8_SHORTPTRW, ST8_REG_Y}, 0x91CF},
++{"ldw", {ST8_SHORTPTRW_Y, ST8_REG_X}, 0x91DF},
++{"ldw", {ST8_REG_Y, ST8_REG_X}, 0x9093},
++{"ldw", {ST8_REG_X, ST8_REG_Y}, 0x93},
++{"ldw", {ST8_REG_X, ST8_REG_SP}, 0x96},
++{"ldw", {ST8_REG_SP, ST8_REG_X}, 0x94},
++{"ldw", {ST8_REG_Y, ST8_REG_SP}, 0x9096},
++{"ldw", {ST8_REG_SP, ST8_REG_Y}, 0x9094},
++//mov
++{"mov", {ST8_LONGMEM, ST8_BYTE}, 0x35},
++{"mov", {ST8_SHORTMEM, ST8_SHORTMEM}, 0x45},
++{"mov", {ST8_LONGMEM, ST8_LONGMEM}, 0x55},
++//mul
++{"mul", {ST8_REG_X, ST8_REG_A}, 0x42},
++{"mul", {ST8_REG_Y, ST8_REG_A}, 0x9042},
++//neg
++{"neg", {ST8_REG_A}, 0x40},
++{"neg", {ST8_SHORTMEM}, 0x30},
++{"neg", {ST8_LONGMEM}, 0x7250},
++{"neg", {ST8_INDX}, 0x70},
++{"neg", {ST8_SHORTOFF_X}, 0x60},
++{"neg", {ST8_LONGOFF_X}, 0x7240},
++{"neg", {ST8_INDY}, 0x9070},
++{"neg", {ST8_SHORTOFF_Y}, 0x9060},
++{"neg", {ST8_LONGOFF_Y}, 0x9040},
++{"neg", {ST8_SHORTOFF_SP}, 0x00},
++{"neg", {ST8_SHORTPTRW}, 0x9230},
++{"neg", {ST8_LONGPTRW}, 0x7230},
++{"neg", {ST8_SHORTPTRW_X}, 0x9260},
++{"neg", {ST8_LONGPTRW_X}, 0x7260},
++{"neg", {ST8_SHORTPTRW_Y}, 0x9160},
++//negw
++{"negw", {ST8_REG_X}, 0x50},
++{"negw", {ST8_REG_Y}, 0x9050},
++//or
++{"or", {ST8_REG_A, ST8_BYTE}, 0xAA},
++{"or", {ST8_REG_A, ST8_SHORTMEM}, 0xBA},
++{"or", {ST8_REG_A, ST8_LONGMEM}, 0xCA},
++{"or", {ST8_REG_A, ST8_INDX}, 0xFA},
++{"or", {ST8_REG_A, ST8_SHORTOFF_X}, 0xEA},
++{"or", {ST8_REG_A, ST8_LONGOFF_X}, 0xDA},
++{"or", {ST8_REG_A, ST8_INDY}, 0x90FA},
++{"or", {ST8_REG_A, ST8_SHORTOFF_Y}, 0x90EA},
++{"or", {ST8_REG_A, ST8_LONGOFF_Y}, 0x90DA},
++{"or", {ST8_REG_A, ST8_SHORTOFF_SP}, 0x1A},
++{"or", {ST8_REG_A, ST8_SHORTPTRW}, 0x92CA},
++{"or", {ST8_REG_A, ST8_LONGPTRW}, 0x72CA},
++{"or", {ST8_REG_A, ST8_SHORTPTRW_X}, 0x92DA},
++{"or", {ST8_REG_A, ST8_LONGPTRW_X}, 0x72DA},
++{"or", {ST8_REG_A, ST8_SHORTPTRW_Y}, 0x91DA},
++//pop
++{"pop", {ST8_REG_A}, 0x84},
++{"pop", {ST8_REG_CC}, 0x86},
++{"pop", {ST8_LONGMEM}, 0x32},
++//popw
++{"popw", {ST8_REG_X}, 0x85},
++{"popw", {ST8_REG_Y}, 0x9085},
++//push
++{"push", {ST8_REG_A}, 0x88},
++{"push", {ST8_REG_CC}, 0x8A},
++{"push", {ST8_BYTE}, 0x4B},
++{"push", {ST8_LONGMEM}, 0x3B},
++//pushw
++{"pushw", {ST8_REG_X}, 0x89},
++{"pushw", {ST8_REG_Y}, 0x9089},
++//rcf
++{"rcf", {}, 0x98},
++//ret
++{"ret", {}, 0x81},
++//retf
++{"retf", {}, 0x87},
++//rim
++{"rim", {}, 0x9A},
++//rlc
++{"rlc", {ST8_REG_A}, 0x49},
++{"rlc", {ST8_SHORTMEM}, 0x39},
++{"rlc", {ST8_LONGMEM}, 0x7259},
++{"rlc", {ST8_INDX}, 0x79},
++{"rlc", {ST8_SHORTOFF_X}, 0x69},
++{"rlc", {ST8_LONGOFF_X}, 0x7249},
++{"rlc", {ST8_INDY}, 0x9079},
++{"rlc", {ST8_SHORTOFF_Y}, 0x9069},
++{"rlc", {ST8_LONGOFF_Y}, 0x9049},
++{"rlc", {ST8_SHORTOFF_SP}, 0x09},
++{"rlc", {ST8_SHORTPTRW}, 0x9239},
++{"rlc", {ST8_LONGPTRW}, 0x7239},
++{"rlc", {ST8_SHORTPTRW_X}, 0x9269},
++{"rlc", {ST8_LONGPTRW_X}, 0x7269},
++{"rlc", {ST8_SHORTPTRW_Y}, 0x9169},
++//rlcw
++{"rlcw", {ST8_REG_X}, 0x59},
++{"rlcw", {ST8_REG_Y}, 0x9059},
++//rlwa
++{"rlwa", {ST8_REG_X, ST8_REG_A}, 0x02},
++{"rlwa", {ST8_REG_Y, ST8_REG_A}, 0x9002},
++//rrc
++{"rrc", {ST8_REG_A}, 0x46},
++{"rrc", {ST8_SHORTMEM}, 0x36},
++{"rrc", {ST8_LONGMEM}, 0x7256},
++{"rrc", {ST8_INDX}, 0x76},
++{"rrc", {ST8_SHORTOFF_X}, 0x66},
++{"rrc", {ST8_LONGOFF_X}, 0x7246},
++{"rrc", {ST8_INDY}, 0x9076},
++{"rrc", {ST8_SHORTOFF_Y}, 0x9066},
++{"rrc", {ST8_LONGOFF_Y}, 0x9046},
++{"rrc", {ST8_SHORTOFF_SP}, 0x06},
++{"rrc", {ST8_SHORTPTRW}, 0x9236},
++{"rrc", {ST8_LONGPTRW}, 0x7236},
++{"rrc", {ST8_SHORTPTRW_X}, 0x9266},
++{"rrc", {ST8_LONGPTRW_X}, 0x7266},
++{"rrc", {ST8_SHORTPTRW_Y}, 0x9166},
++//rrcw
++{"rrcw", {ST8_REG_X}, 0x56},
++{"rrcw", {ST8_REG_Y}, 0x9056},
++//rrwa
++{"rrwa", {ST8_REG_X, ST8_REG_A}, 0x01},
++{"rrwa", {ST8_REG_Y, ST8_REG_A}, 0x9001},
++//rvf
++{"rvf", {}, 0x9C},
++//sbc
++{"sbc", {ST8_REG_A, ST8_BYTE}, 0xA2},
++{"sbc", {ST8_REG_A, ST8_SHORTMEM}, 0xB2},
++{"sbc", {ST8_REG_A, ST8_LONGMEM}, 0xC2},
++{"sbc", {ST8_REG_A, ST8_INDX}, 0xF2},
++{"sbc", {ST8_REG_A, ST8_SHORTOFF_X}, 0xE2},
++{"sbc", {ST8_REG_A, ST8_LONGOFF_X}, 0xD2},
++{"sbc", {ST8_REG_A, ST8_INDY}, 0x90F2},
++{"sbc", {ST8_REG_A, ST8_SHORTOFF_Y}, 0x90E2},
++{"sbc", {ST8_REG_A, ST8_LONGOFF_Y}, 0x90D2},
++{"sbc", {ST8_REG_A, ST8_SHORTOFF_SP}, 0x12},
++{"sbc", {ST8_REG_A, ST8_SHORTPTRW}, 0x92C2},
++{"sbc", {ST8_REG_A, ST8_LONGPTRW}, 0x72C2},
++{"sbc", {ST8_REG_A, ST8_SHORTPTRW_X}, 0x92D2},
++{"sbc", {ST8_REG_A, ST8_LONGPTRW_X}, 0x72D2},
++{"sbc", {ST8_REG_A, ST8_SHORTPTRW_Y}, 0x91D2},
++//scf
++{"scf", {}, 0x99},
++//sim
++{"sim", {}, 0x9B},
++//sll
++{"sll", {ST8_REG_A}, 0x48},
++{"sll", {ST8_SHORTMEM}, 0x38},
++{"sll", {ST8_LONGMEM}, 0x7258},
++{"sll", {ST8_INDX}, 0x78},
++{"sll", {ST8_SHORTOFF_X}, 0x68},
++{"sll", {ST8_LONGOFF_X}, 0x7248},
++{"sll", {ST8_INDY}, 0x9078},
++{"sll", {ST8_SHORTOFF_Y}, 0x9068},
++{"sll", {ST8_LONGOFF_Y}, 0x9048},
++{"sll", {ST8_SHORTOFF_SP}, 0x08},
++{"sll", {ST8_SHORTPTRW}, 0x9238},
++{"sll", {ST8_LONGPTRW}, 0x7238},
++{"sll", {ST8_SHORTPTRW_X}, 0x9268},
++{"sll", {ST8_LONGPTRW_X}, 0x7268},
++{"sll", {ST8_SHORTPTRW_Y}, 0x9168},
++//sllw
++{"sllw", {ST8_REG_X}, 0x58},
++{"sllw", {ST8_REG_Y}, 0x9058},
++//sla
++{"sla", {ST8_REG_A}, 0x48},
++{"sla", {ST8_SHORTMEM}, 0x38},
++{"sla", {ST8_LONGMEM}, 0x7258},
++{"sla", {ST8_INDX}, 0x78},
++{"sla", {ST8_SHORTOFF_X}, 0x68},
++{"sla", {ST8_LONGOFF_X}, 0x7248},
++{"sla", {ST8_INDY}, 0x9078},
++{"sla", {ST8_SHORTOFF_Y}, 0x9068},
++{"sla", {ST8_LONGOFF_Y}, 0x9048},
++{"sla", {ST8_SHORTOFF_SP}, 0x08},
++{"sla", {ST8_SHORTPTRW}, 0x9238},
++{"sla", {ST8_LONGPTRW}, 0x7238},
++{"sla", {ST8_SHORTPTRW_X}, 0x9268},
++{"sla", {ST8_LONGPTRW_X}, 0x7268},
++{"sla", {ST8_SHORTPTRW_Y}, 0x9168},
++//slaw
++{"slaw", {ST8_REG_X}, 0x58},
++{"slaw", {ST8_REG_Y}, 0x9058},
++//sra
++{"sra", {ST8_REG_A}, 0x47},
++{"sra", {ST8_SHORTMEM}, 0x37},
++{"sra", {ST8_LONGMEM}, 0x7257},
++{"sra", {ST8_INDX}, 0x77},
++{"sra", {ST8_SHORTOFF_X}, 0x67},
++{"sra", {ST8_LONGOFF_X}, 0x7247},
++{"sra", {ST8_INDY}, 0x9077},
++{"sra", {ST8_SHORTOFF_Y}, 0x9067},
++{"sra", {ST8_LONGOFF_Y}, 0x9047},
++{"sra", {ST8_SHORTOFF_SP}, 0x07},
++{"sra", {ST8_SHORTPTRW}, 0x9237},
++{"sra", {ST8_LONGPTRW}, 0x7237},
++{"sra", {ST8_SHORTPTRW_X}, 0x9267},
++{"sra", {ST8_LONGPTRW_X}, 0x7267},
++{"sra", {ST8_SHORTPTRW_Y}, 0x9167},
++//sraw
++{"sraw", {ST8_REG_X}, 0x57},
++{"sraw", {ST8_REG_Y}, 0x9057},
++//srl
++{"srl", {ST8_REG_A}, 0x44},
++{"srl", {ST8_SHORTMEM}, 0x34},
++{"srl", {ST8_LONGMEM}, 0x7254},
++{"srl", {ST8_INDX}, 0x74},
++{"srl", {ST8_SHORTOFF_X}, 0x64},
++{"srl", {ST8_LONGOFF_X}, 0x7244},
++{"srl", {ST8_INDY}, 0x9074},
++{"srl", {ST8_SHORTOFF_Y}, 0x9064},
++{"srl", {ST8_LONGOFF_Y}, 0x9044},
++{"srl", {ST8_SHORTOFF_SP}, 0x04},
++{"srl", {ST8_SHORTPTRW}, 0x9234},
++{"srl", {ST8_LONGPTRW}, 0x7234},
++{"srl", {ST8_SHORTPTRW_X}, 0x9264},
++{"srl", {ST8_LONGPTRW_X}, 0x7264},
++{"srl", {ST8_SHORTPTRW_Y}, 0x9164},
++//sraw
++{"srlw", {ST8_REG_X}, 0x54},
++{"srlw", {ST8_REG_Y}, 0x9054},
++//sub
++{"sub", {ST8_REG_A, ST8_BYTE}, 0xA0},
++{"sub", {ST8_REG_A, ST8_SHORTMEM}, 0xB0},
++{"sub", {ST8_REG_A, ST8_LONGMEM}, 0xC0},
++{"sub", {ST8_REG_A, ST8_INDX}, 0xF0},
++{"sub", {ST8_REG_A, ST8_SHORTOFF_X}, 0xE0},
++{"sub", {ST8_REG_A, ST8_LONGOFF_X}, 0xD0},
++{"sub", {ST8_REG_A, ST8_INDY}, 0x90F0},
++{"sub", {ST8_REG_A, ST8_SHORTOFF_Y}, 0x90E0},
++{"sub", {ST8_REG_A, ST8_LONGOFF_Y}, 0x90D0},
++{"sub", {ST8_REG_A, ST8_SHORTOFF_SP}, 0x10},
++{"sub", {ST8_REG_A, ST8_SHORTPTRW}, 0x92C0},
++{"sub", {ST8_REG_A, ST8_LONGPTRW}, 0x72C0},
++{"sub", {ST8_REG_A, ST8_SHORTPTRW_X}, 0x92D0},
++{"sub", {ST8_REG_A, ST8_LONGPTRW_X}, 0x72D0},
++{"sub", {ST8_REG_A, ST8_SHORTPTRW_Y}, 0x91D0},
++{"sub", {ST8_REG_SP, ST8_BYTE}, 0x52},
++//subw
++{"subw", {ST8_REG_X, ST8_WORD}, 0x1D},
++{"subw", {ST8_REG_X, ST8_LONGMEM}, 0x72B0},
++{"subw", {ST8_REG_X, ST8_SHORTOFF_SP}, 0x72F0},
++{"subw", {ST8_REG_Y, ST8_WORD}, 0x72A2},
++{"subw", {ST8_REG_Y, ST8_LONGMEM}, 0x72B2},
++{"subw", {ST8_REG_Y, ST8_SHORTOFF_SP}, 0x72F2},
++//swap
++{"swap", {ST8_REG_A}, 0x4E},
++{"swap", {ST8_SHORTMEM}, 0x3E},
++{"swap", {ST8_LONGMEM}, 0x725E},
++{"swap", {ST8_INDX}, 0x7E},
++{"swap", {ST8_SHORTOFF_X}, 0x6E},
++{"swap", {ST8_LONGOFF_X}, 0x724E},
++{"swap", {ST8_INDY}, 0x907E},
++{"swap", {ST8_SHORTOFF_Y}, 0x906E},
++{"swap", {ST8_LONGOFF_Y}, 0x904E},
++{"swap", {ST8_SHORTOFF_SP}, 0x0E},
++{"swap", {ST8_SHORTPTRW}, 0x923E},
++{"swap", {ST8_LONGPTRW}, 0x723E},
++{"swap", {ST8_SHORTPTRW_X}, 0x926E},
++{"swap", {ST8_LONGPTRW_X}, 0x726E},
++{"swap", {ST8_SHORTPTRW_Y}, 0x916E},
++//swapw
++{"swapw", {ST8_REG_X}, 0x5E},
++{"swapw", {ST8_REG_Y}, 0x905E},
++//tnz
++{"tnz", {ST8_REG_A}, 0x4D},
++{"tnz", {ST8_SHORTMEM}, 0x3D},
++{"tnz", {ST8_LONGMEM}, 0x725D},
++{"tnz", {ST8_INDX}, 0x7D},
++{"tnz", {ST8_SHORTOFF_X}, 0x6D},
++{"tnz", {ST8_LONGOFF_X}, 0x724D},
++{"tnz", {ST8_INDY}, 0x907D},
++{"tnz", {ST8_SHORTOFF_Y}, 0x906D},
++{"tnz", {ST8_LONGOFF_Y}, 0x904D},
++{"tnz", {ST8_SHORTOFF_SP}, 0x0D},
++{"tnz", {ST8_SHORTPTRW}, 0x923D},
++{"tnz", {ST8_LONGPTRW}, 0x723D},
++{"tnz", {ST8_SHORTPTRW_X}, 0x926D},
++{"tnz", {ST8_LONGPTRW_X}, 0x726D},
++{"tnz", {ST8_SHORTPTRW_Y}, 0x916D},
++//tnzw
++{"tnzw", {ST8_REG_X}, 0x5D},
++{"tnzw", {ST8_REG_Y}, 0x905D},
++//trap
++{"trap", {}, 0x83},
++//wfe
++{"wfe", {}, 0x728F},
++//wfi
++{"wfi", {}, 0x8F},
++//xor
++{"xor", {ST8_REG_A, ST8_BYTE}, 0xA8},
++{"xor", {ST8_REG_A, ST8_SHORTMEM}, 0xB8},
++{"xor", {ST8_REG_A, ST8_LONGMEM}, 0xC8},
++{"xor", {ST8_REG_A, ST8_INDX}, 0xF8},
++{"xor", {ST8_REG_A, ST8_SHORTOFF_X}, 0xE8},
++{"xor", {ST8_REG_A, ST8_LONGOFF_X}, 0xD8},
++{"xor", {ST8_REG_A, ST8_INDY}, 0x90F8},
++{"xor", {ST8_REG_A, ST8_SHORTOFF_Y}, 0x90E8},
++{"xor", {ST8_REG_A, ST8_LONGOFF_Y}, 0x90D8},
++{"xor", {ST8_REG_A, ST8_SHORTOFF_SP}, 0x18},
++{"xor", {ST8_REG_A, ST8_SHORTPTRW}, 0x92C8},
++{"xor", {ST8_REG_A, ST8_LONGPTRW}, 0x72C8},
++{"xor", {ST8_REG_A, ST8_SHORTPTRW_X}, 0x92D8},
++{"xor", {ST8_REG_A, ST8_LONGPTRW_X}, 0x72D8},
++{"xor", {ST8_REG_A, ST8_SHORTPTRW_Y}, 0x91D8},
++  {NULL, {ST8_END}, 0},
++};
++
++unsigned int stm8_opcode_size(unsigned int number)
++{
++	int i;
++	for(i = sizeof(int); i > 0; i--) {
++		if(number & 0xFF << (i-1)*8)
++			return(i);
++	}
++	return(1);
++}
++
++int stm8_compute_insn_size(struct stm8_opcodes_s opcode) {
++	int i, ret = 0;
++	for(i = 0; opcode.constraints[i] != ST8_END; i++) {
++		switch(opcode.constraints[i]) {
++		case ST8_PCREL:
++		case ST8_SHORTMEM:
++		case ST8_BYTE:
++		case ST8_SHORTPTRW_Y:
++		case ST8_SHORTPTRW_X:
++		case ST8_SHORTPTRW:
++		case ST8_SHORTOFF_X:
++		case ST8_SHORTOFF_Y:
++		case ST8_SHORTOFF_SP:
++			ret++;
++			break;
++		case ST8_LONGPTRE_Y:
++		case ST8_LONGPTRE_X:
++		case ST8_LONGPTRW_Y:
++		case ST8_LONGPTRW_X:
++		case ST8_LONGPTRE:
++		case ST8_LONGPTRW:
++		case ST8_LONGOFF_X:
++		case ST8_LONGOFF_Y:
++		case ST8_LONGMEM:
++		case ST8_WORD:
++			ret += 2;
++			break;
++		case ST8_EXTMEM:
++		case ST8_EXTOFF_X:
++		case ST8_EXTOFF_Y:
++			ret += 3;
++			break;
++		case ST8_END:
++		case ST8_BIT_0:
++		case ST8_BIT_1:
++		case ST8_BIT_2:
++		case ST8_BIT_3:
++		case ST8_BIT_4:
++		case ST8_BIT_5:
++		case ST8_BIT_6:
++		case ST8_BIT_7:
++		case ST8_REG_CC:
++		case ST8_REG_A:
++		case ST8_REG_X:
++		case ST8_REG_Y:
++		case ST8_REG_SP:
++		case ST8_REG_XL:
++		case ST8_REG_XH:
++		case ST8_REG_YL:
++		case ST8_REG_YH:
++		case ST8_INDX:
++		case ST8_INDY:
++			break;
++		}
++	}
++	ret += stm8_opcode_size(opcode.bin_opcode);
++	return(ret);
++}
+-- 
+2.12.2
+

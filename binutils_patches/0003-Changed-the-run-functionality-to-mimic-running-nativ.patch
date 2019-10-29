@@ -1,0 +1,130 @@
+From a98428b14d141be893403aa7c7935012aef1f8e5 Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?=C3=85ke=20Rehnman?= <ake_rehnman_at_gmail_com>
+Date: Sat, 4 Mar 2017 23:47:44 +0100
+Subject: [PATCH 3/6] Changed the run functionality to mimic running native
+ code.
+
+In addition two new remote settings were added to facilitate debugging with
+IDE's like eclipse. These settings will make gdb behave like if it is debugging
+native code removing the necessity to use remote, load and continue commands.
+
+set remote run-connect on (default is on)
+The run-connect setting makes gdb automatically connect to localhost port 3333
+(openocd server port) when run command is entered.
+
+set remote run-load on (default is on)
+The run-load setting makes gdb automatically load the program when run command
+is entered.
+
+# Conflicts:
+#	gdb/remote.c
+---
+ gdb/remote.c | 50 ++++++++++++++++++++++++++++++++++++++++++++++++--
+ 1 file changed, 48 insertions(+), 2 deletions(-)
+
+diff --git a/gdb/remote.c b/gdb/remote.c
+index a426508723..208bf4609b 100644
+--- a/gdb/remote.c
++++ b/gdb/remote.c
+@@ -76,6 +76,9 @@
+ #include "environ.h"
+ #include "common/byte-vector.h"
+ 
++int remote_run_connect = 1;
++int remote_run_load = 1;
++
+ /* Per-program-space data key.  */
+ static const struct program_space_data *remote_pspace_data;
+ 
+@@ -9669,6 +9672,17 @@ Remote replied unexpectedly while setting startup-with-shell: %s"),
+ 
+   extended_remote_set_inferior_cwd (rs);
+ 
++  //akre
++  if (remote_run_connect)
++  {
++	  ops->to_open("localhost:3333", from_tty);
++	  if (remote_run_load)
++		  generic_load (exec_file, from_tty);
++	  init_thread_list ();
++	  run_worked = 0;
++  }
++  else
++  {
+   /* Now restart the remote server.  */
+   run_worked = extended_remote_run (args) != -1;
+   if (!run_worked)
+@@ -9683,7 +9697,7 @@ Remote replied unexpectedly while setting startup-with-shell: %s"),
+       /* Fall back to "R".  */
+       extended_remote_restart ();
+     }
+-
++  }
+   if (!have_inferiors ())
+     {
+       /* Clean up from the last time we ran, before we mark the target
+@@ -13673,6 +13687,14 @@ Specify the serial device it is connected to\n\
+     remote_thread_handle_to_thread_info;
+ }
+ 
++//akre
++//
++static int
++extended_remote_can_run (struct target_ops *self)
++{
++  return remote_run_connect;
++}
++
+ /* Set up the extended remote vector by making a copy of the standard
+    remote vector and adding to it.  */
+ 
+@@ -13694,6 +13716,9 @@ Specify the serial device it is connected to (e.g. /dev/ttya).";
+   extended_remote_ops.to_post_attach = extended_remote_post_attach;
+   extended_remote_ops.to_supports_disable_randomization
+     = extended_remote_supports_disable_randomization;
++
++  extended_remote_ops.to_can_run
++    = extended_remote_can_run;
+ }
+ 
+ static int
+@@ -13707,7 +13732,11 @@ remote_can_async_p (struct target_ops *ops)
+     return 0;
+ 
+   /* We're async whenever the serial device is.  */
+-  return serial_can_async_p (rs->remote_desc);
++  //akre check if we have a remote connection
++  if (rs->remote_desc)
++	  return serial_can_async_p (rs->remote_desc);
++  else
++	  return 0;
+ }
+ 
+ static int
+@@ -13991,6 +14020,23 @@ the packets being used"),
+ 		  &remote_show_cmdlist, "show remote ",
+ 		  0 /* allow-unknown */, &showlist);
+ 
++//akre
++  add_setshow_boolean_cmd ("run-connect", class_support,
++			   &remote_run_connect, _("\
++Enable connecting to localhost:3333 with run command."), _("		\
++Show remote-run-connect."), _("		\
++If set remote target is connected automatically when program is run."),
++			   NULL, NULL,
++			   &remote_set_cmdlist, &remote_show_cmdlist);
++
++  add_setshow_boolean_cmd ("run-load", class_support,
++			   &remote_run_load, _("\
++Enable loading with run command."), _("		\
++Show remote-run-load."), _("		\
++If set remote target is loaded automatically when program is run."),
++			   NULL, NULL,
++			   &remote_set_cmdlist, &remote_show_cmdlist);
++
+   add_cmd ("compare-sections", class_obscure, compare_sections_command, _("\
+ Compare section data on target to the exec file.\n\
+ Argument is a single section name (default: all loaded sections).\n\
+-- 
+2.12.2
+

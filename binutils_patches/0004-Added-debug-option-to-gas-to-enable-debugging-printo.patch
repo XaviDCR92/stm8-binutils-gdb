@@ -1,0 +1,180 @@
+From 85f95b1d46d4ab7bff529f9f0de5cc3263a205bf Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?=C3=85ke=20Rehnman?= <ake_rehnman_at_gmail_com>
+Date: Sun, 23 Apr 2017 21:26:53 +0200
+Subject: [PATCH 4/6] Added --debug option to gas to enable debugging printout
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Signed-off-by: Åke Rehnman <ake_rehnman_at_gmail_com>
+---
+ gas/config/tc-stm8.c | 58 +++++++++++++++++++++++++++++++++++++---------------
+ 1 file changed, 42 insertions(+), 16 deletions(-)
+
+diff --git a/gas/config/tc-stm8.c b/gas/config/tc-stm8.c
+index 84e667278e..1fa4503ce2 100644
+--- a/gas/config/tc-stm8.c
++++ b/gas/config/tc-stm8.c
+@@ -54,6 +54,7 @@ const char line_separator_chars[] = "{";
+ 
+ int md_short_jump_size = 3;
+ int md_long_jump_size = 4;
++int stm8_debug = 0;
+ 
+ /* The target specific pseudo-ops which we support.  */
+ /* example:
+@@ -95,17 +96,38 @@ md_show_usage (FILE *stream)
+   fprintf (stream, _("\
+   STM8 options:\n\
+   "));
++  fprintf (stream, _("\
++  --debug               turn on debug messages\n"));
+ }
+ 
++enum options
++{
++  OPTION_DEBUG = OPTION_MD_BASE + 1,
++};
++
+ const char *md_shortopts = "";
+ 
+ struct option md_longopts[] =
+   {
++  	{ "debug",     no_argument, NULL, OPTION_DEBUG     },
+     {NULL, no_argument, NULL, 0}
+   };
+ 
+ size_t md_longopts_size = sizeof (md_longopts);
+ 
++int
++md_parse_option (int c, const char *arg __attribute__((unused)))
++{
++  switch (c)
++    {
++    case OPTION_DEBUG:
++      stm8_debug = 1;
++      return 1;
++    }
++  return 0;
++}
++
++
+ void
+ md_begin (void)
+ {
+@@ -228,7 +250,8 @@ md_apply_fix (fixS *fixP, valueT *valP, segT segment ATTRIBUTE_UNUSED)
+   long val = * (long *) valP;
+   char *buf = fixP->fx_where + fixP->fx_frag->fr_literal;
+ 
+-  print_fixup(fixP);
++	if (stm8_debug)
++  	print_fixup(fixP);
+ 
+   switch (fixP->fx_r_type)
+     {
+@@ -329,7 +352,8 @@ tc_gen_reloc (asection *section ATTRIBUTE_UNUSED,
+ {
+   arelent *reloc;
+ 
+-  print_fixup(fixp);
++	if (stm8_debug)
++  	print_fixup(fixp);
+ 
+   reloc = XNEW (arelent);
+   reloc->sym_ptr_ptr = XNEW (asymbol *);
+@@ -359,12 +383,6 @@ md_section_align (segT seg, valueT size)
+ 	return (size + mask) & ~mask;
+ }
+ 
+-int
+-md_parse_option (int c __attribute__((unused)), const char *arg __attribute__((unused)))
+-{
+-	return 1;
+-}
+-
+ symbolS *
+ md_undefined_symbol (char *name)
+ {
+@@ -529,7 +547,8 @@ int read_arg_ptr(char *str, expressionS *exps)
+ 		}
+ 		
+ 		expression(exps);
+-		print_expr(exps);
++		if (stm8_debug)
++			print_expr(exps);
+ 		
+ 		/* restore c */
+ 		if (p)
+@@ -565,7 +584,8 @@ char* toupperstr(char *str);
+ 
+ char* toupperstr(char *str)
+ {
+-	for(int i = 0; str[i]; i++){
++	int i;
++	for(i = 0; str[i]; i++){
+   	str[i] = toupper(str[i]);
+ 	}
+ 	return str;
+@@ -591,7 +611,8 @@ int read_arg(char *str, expressionS *exps)
+ 		exps->X_md = OP_IMM;
+ 		input_line_pointer = str;
+ 		expression(exps);
+-		print_expr(exps);
++		if (stm8_debug)
++			print_expr(exps);
+ 		return 1;
+ 	}
+ 	
+@@ -654,7 +675,8 @@ int read_arg(char *str, expressionS *exps)
+ 		str=strtok(str,",");
+ 		input_line_pointer=str;
+ 		expression(exps);
+-		print_expr(exps);
++		if (stm8_debug)
++			print_expr(exps);
+ 		exps->X_md=OP_OFF_X;
+ 		return 1;
+ 	}
+@@ -680,7 +702,8 @@ int read_arg(char *str, expressionS *exps)
+ 		str=strtok(str,",");
+ 		input_line_pointer=str;
+ 		expression(exps);
+-		print_expr(exps);
++		if (stm8_debug)
++			print_expr(exps);
+ 		exps->X_md=OP_OFF_X;
+ 		return 1;
+ 	}
+@@ -691,7 +714,8 @@ int read_arg(char *str, expressionS *exps)
+ 		str=strtok(str,",");
+ 		input_line_pointer=str;
+ 		expression(exps);
+-		print_expr(exps);
++		if (stm8_debug)
++			print_expr(exps);
+ 		exps->X_md=OP_OFF_SP;
+ 		return 1;
+ 	}
+@@ -705,7 +729,8 @@ int read_arg(char *str, expressionS *exps)
+ 		exps->X_md = OP_SHORTMEM;
+ 		input_line_pointer = str;
+ 		expression(exps);
+-		print_expr(exps);
++		if (stm8_debug)
++			print_expr(exps);
+ 		*p = c;
+ 		input_line_pointer += 6;
+ 		return 1;
+@@ -713,7 +738,8 @@ int read_arg(char *str, expressionS *exps)
+ 
+ 	input_line_pointer = str;
+ 	expression(exps);
+-	print_expr(exps);
++	if (stm8_debug)
++		print_expr(exps);
+ 
+ 	if (exps->X_op == O_register)
+ 	{
+-- 
+2.12.2
+
