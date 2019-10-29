@@ -1,7 +1,7 @@
 From 22cbcafce0c08683209fe1bba2b7faef111764d4 Mon Sep 17 00:00:00 2001
 From: Ake Rehnman <ake_rehnman_at_gmail_com>
 Date: Fri, 24 Feb 2017 11:51:54 +0100
-Subject: [PATCH 1/6] First commit for stm8-binutils-gdb
+Subject: [PATCH 1/8] First commit for stm8-binutils-gdb
 
 # Conflicts:
 #	bfd/archures.c

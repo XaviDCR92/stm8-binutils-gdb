@@ -1,7 +1,7 @@
 From c5d6641a345485cab823426a5b364a8126e7eda3 Mon Sep 17 00:00:00 2001
 From: =?UTF-8?q?=C3=85ke=20Rehnman?= <ake_rehnman_at_gmail_com>
 Date: Sun, 23 Apr 2017 21:30:18 +0200
-Subject: [PATCH 5/6] Fixed printf formatting warnings Removed target
+Subject: [PATCH 5/8] Fixed printf formatting warnings Removed target
  description registers
 MIME-Version: 1.0
 Content-Type: text/plain; charset=UTF-8

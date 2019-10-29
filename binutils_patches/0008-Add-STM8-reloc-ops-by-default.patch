@@ -1,0 +1,29 @@
+From 1c7438a0330f4187e122e97b4592f9187cf49bcd Mon Sep 17 00:00:00 2001
+From: Xavier ASUS <xavi92psx@gmail.com>
+Date: Tue, 29 Oct 2019 01:15:40 +0100
+Subject: [PATCH 8/8] Add STM8 reloc ops by default
+
+---
+ bfd/bfd-in2.h | 7 +++++++
+ 1 file changed, 7 insertions(+)
+
+diff --git a/bfd/bfd-in2.h b/bfd/bfd-in2.h
+index 78221ddc..e602ff2d 100644
+--- a/bfd/bfd-in2.h
++++ b/bfd/bfd-in2.h
+@@ -6517,6 +6517,13 @@ assembler and not (currently) written to any object files.  */
+ 
+ /* STM8 bit field immediate for BTJx, BCPL, BSET, BRES  instruction.  */
+   BFD_RELOC_STM8_BIT_FLD,
++/* STM8 extract LSB from word. */
++  BFD_RELOC_STM8_LO8,
++/* STM8 extract MSB from word. */
++  BFD_RELOC_STM8_HI8,
++/* STM8 extract MMSB from 24-bit address. */
++  BFD_RELOC_STM8_HH8,
++
+   BFD_RELOC_UNUSED };
+ 
+ typedef enum bfd_reloc_code_real bfd_reloc_code_real_type;
+-- 
+2.17.1

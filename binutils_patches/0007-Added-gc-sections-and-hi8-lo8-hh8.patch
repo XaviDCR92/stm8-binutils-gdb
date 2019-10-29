@@ -1,0 +1,783 @@
+From 69776a7af5b7a3697c5d32f3265d2a8de8cb5b32 Mon Sep 17 00:00:00 2001
+From: Xavier ASUS <xavi92psx@gmail.com>
+Date: Tue, 29 Oct 2019 00:43:05 +0100
+Subject: [PATCH 7/8] Added --gc-sections and hi8/lo8/hh8
+
+---
+ bfd/elf32-stm8.c      | 229 ++++++++++++++++++++++++----
+ bfd/libbfd.h          |   3 +
+ bfd/reloc.c           |  15 ++
+ gas/config/tc-stm8.c  | 163 +++++++++++++++++---
+ gas/config/tc-stm8.h  |   2 +-
+ include/elf/stm8.h    |   3 +
+ include/opcode/stm8.h |   5 +-
+ opcodes/stm8-dis.c    |  31 +++-
+ opcodes/stm8-opc.c    |   6 +
+ 9 files changed, 400 insertions(+), 57 deletions(-)
+
+diff --git a/bfd/elf32-stm8.c b/bfd/elf32-stm8.c
+index 37995553..5eb3c814 100644
+--- a/bfd/elf32-stm8.c
++++ b/bfd/elf32-stm8.c
+@@ -26,17 +26,16 @@
+ #include "elf-bfd.h"
+ 
+ #include "elf/stm8.h"
+-//#include "elf32-avr.h"
+ #include "bfd_stdint.h"
+ 
+ bfd_reloc_status_type
+ bfd_elf_stm8_spec_reloc (bfd *abfd ATTRIBUTE_UNUSED,
+-		       arelent *reloc_entry,
+-		       asymbol *symbol,
+-		       void *data ATTRIBUTE_UNUSED,
+-		       asection *input_section,
+-		       bfd *output_bfd,
+-		       char **error_message ATTRIBUTE_UNUSED);
++               arelent *reloc_entry,
++               asymbol *symbol,
++               void *data ATTRIBUTE_UNUSED,
++               asection *input_section,
++               bfd *output_bfd,
++               char **error_message ATTRIBUTE_UNUSED);
+ 
+ static reloc_howto_type elf32_stm8_howto_table_1[] =
+ {
+@@ -96,7 +95,8 @@ static reloc_howto_type elf32_stm8_howto_table_1[] =
+          bfd_elf_generic_reloc, /* special_function */
+          "R_STM8_24",           /* name */
+          FALSE,                 /* partial_inplace */
+-         0xff000000,            /* src_mask */
++         //0xff000000,            /* src_mask */
++         0x0,                   /* src_mask */
+          0x00ffffff,            /* dst_mask */
+          FALSE),                /* pcrel_offset */
+ 
+@@ -142,30 +142,75 @@ static reloc_howto_type elf32_stm8_howto_table_1[] =
+          0x0,                   /* src_mask */
+          0xff,                  /* dst_mask */
+          TRUE),                 /* pcrel_offset */
++
++  /* lo 8 bit relocation.  */
++  HOWTO (R_STM8_LO8,            /* type */
++         0,                     /* rightshift */
++         0,                     /* size (0 = byte, 1 = short, 2 = long) */
++         8,                     /* bitsize */
++         FALSE,                 /* pc_relative */
++         0,                     /* bitpos */
++         complain_overflow_dont, /* complain_on_overflow */
++         bfd_elf_generic_reloc, /* special_function */
++         "R_STM8_LO8",          /* name */
++         FALSE,                 /* partial_inplace */
++         0x0,                   /* src_mask */
++         0xff,                  /* dst_mask */
++         FALSE),                /* pcrel_offset */
++
++  /* hi 8 bit relocation.  */
++  HOWTO (R_STM8_HI8,            /* type */
++         8,                     /* rightshift */
++         0,                     /* size (0 = byte, 1 = short, 2 = long) */
++         8,                     /* bitsize */
++         FALSE,                 /* pc_relative */
++         0,                     /* bitpos */
++         complain_overflow_dont, /* complain_on_overflow */
++         bfd_elf_generic_reloc, /* special_function */
++         "R_STM8_HI8",          /* name */
++         FALSE,                 /* partial_inplace */
++         0x0,                   /* src_mask */
++         0xff,                  /* dst_mask */
++         FALSE),                /* pcrel_offset */
++
++  /* hh 8 bit relocation.  */
++  HOWTO (R_STM8_HH8,            /* type */
++         16,                    /* rightshift */
++         0,                     /* size (0 = byte, 1 = short, 2 = long) */
++         8,                     /* bitsize */
++         FALSE,                 /* pc_relative */
++         0,                     /* bitpos */
++         complain_overflow_dont, /* complain_on_overflow */
++         bfd_elf_generic_reloc, /* special_function */
++         "R_STM8_HH8",          /* name */
++         FALSE,                 /* partial_inplace */
++         0x0,                   /* src_mask */
++         0xff,                  /* dst_mask */
++         FALSE),                /* pcrel_offset */
+ };
+ 
+ //stupid bfd_elf_generic_reloc cant handle 24-bit relocations  
+ //so we have to write our own...
+ bfd_reloc_status_type
+ bfd_elf_stm8_spec_reloc (bfd *abfd ATTRIBUTE_UNUSED,
+-		       arelent *reloc_entry,
+-		       asymbol *symbol,
+-		       void *data ATTRIBUTE_UNUSED,
+-		       asection *input_section ATTRIBUTE_UNUSED,
+-		       bfd *output_bfd,
+-		       char **error_message ATTRIBUTE_UNUSED)
++               arelent *reloc_entry,
++               asymbol *symbol,
++               void *data ATTRIBUTE_UNUSED,
++               asection *input_section ATTRIBUTE_UNUSED,
++               bfd *output_bfd,
++               char **error_message ATTRIBUTE_UNUSED)
+ {
+   if (output_bfd != NULL
+       && (symbol->flags & BSF_SECTION_SYM) == 0
+       && (! reloc_entry->howto->partial_inplace
+-	  || reloc_entry->addend == 0))
++      || reloc_entry->addend == 0))
+     {
+       reloc_entry->address += input_section->output_offset+1;
+       return bfd_reloc_ok;
+     }
+   
+   if (output_bfd == NULL)
+-	  return bfd_reloc_continue;
++      return bfd_reloc_continue;
+   reloc_entry->address += input_section->output_offset-1;
+   return bfd_reloc_continue;
+ }
+@@ -203,7 +248,10 @@ static const struct elf32_stm8_reloc_map elf32_stm8_reloc_map[] =
+   { BFD_RELOC_16,                   R_STM8_16 },
+   { BFD_RELOC_24,                   R_STM8_24 },
+   { BFD_RELOC_32,                   R_STM8_32 },
+-  { BFD_RELOC_8_PCREL,              R_STM8_8_PCREL}
++  { BFD_RELOC_8_PCREL,              R_STM8_8_PCREL},
++  { BFD_RELOC_STM8_LO8,             R_STM8_LO8},
++  { BFD_RELOC_STM8_HI8,             R_STM8_HI8},
++  { BFD_RELOC_STM8_HH8,             R_STM8_HH8},
+ };
+ 
+ static reloc_howto_type *
+@@ -235,12 +283,12 @@ elf32_stm8_reloc_name_lookup (bfd *abfd ATTRIBUTE_UNUSED,
+ 
+ static void
+ elf32_stm8_post_process_headers (bfd *abfd,
+-				 struct bfd_link_info *info ATTRIBUTE_UNUSED)
++                 struct bfd_link_info *info ATTRIBUTE_UNUSED)
+ {
+   Elf_Internal_Ehdr *i_ehdrp = elf_elfheader (abfd);
+ //  i_ehdrp->e_ident[EI_OSABI] = ELFOSABI_STANDALONE;
+ //  i_ehdrp->e_ident[EI_OSABI] = ELFOSABI_ARM;
+-//	i_ehdrp->e_ident[EI_OSABI] = get_elf_backend_data (abfd)->elf_osabi;
++//  i_ehdrp->e_ident[EI_OSABI] = get_elf_backend_data (abfd)->elf_osabi;
+   i_ehdrp->e_ident[EI_ABIVERSION] = 0;
+ }
+ 
+@@ -253,33 +301,158 @@ elf32_stm8_modify_segment_map (bfd *abfd,
+   m = elf_seg_map (abfd);
+   while (m)
+   {
+-  	m->includes_filehdr = 0;
+-  	m->includes_phdrs = 0;
+-  	m = m->next;
++    m->includes_filehdr = 0;
++    m->includes_phdrs = 0;
++    m = m->next;
+   }
+   return TRUE;
+ }
+ 
++static bfd_boolean
++elf32_stm8_relocate_section (bfd *output_bfd ATTRIBUTE_UNUSED,
++                struct bfd_link_info *info,
++                bfd *input_bfd,
++                asection *input_section,
++                bfd_byte *contents,
++                Elf_Internal_Rela *relocs,
++                Elf_Internal_Sym *local_syms,
++                asection **local_sections)
++{
++  Elf_Internal_Shdr *symtab_hdr;
++  struct elf_link_hash_entry **sym_hashes;
++  Elf_Internal_Rela *rel;
++  Elf_Internal_Rela *relend;
++
++  symtab_hdr = & elf_tdata (input_bfd)->symtab_hdr;
++  sym_hashes = elf_sym_hashes (input_bfd);
++  relend     = relocs + input_section->reloc_count;
++
++  for (rel = relocs; rel < relend; rel ++)
++  {
++    reloc_howto_type *howto;
++    unsigned long r_symndx;
++    Elf_Internal_Sym *sym;
++    asection *sec;
++    struct elf_link_hash_entry *h;
++    bfd_vma relocation;
++    bfd_reloc_status_type r;
++    const char *name;
++    int r_type;
++
++    r_type = ELF32_R_TYPE (rel->r_info);
++    r_symndx = ELF32_R_SYM (rel->r_info);
++    howto = elf32_stm8_howto_from_type(r_type);
++    h      = NULL;
++    sym    = NULL;
++    sec    = NULL;
++
++    if (r_symndx < symtab_hdr->sh_info)
++    {
++      sym = local_syms + r_symndx;
++      sec = local_sections [r_symndx];
++      relocation = _bfd_elf_rela_local_sym (output_bfd, sym, &sec, rel);
++
++      name = bfd_elf_string_from_elf_section
++        (input_bfd, symtab_hdr->sh_link, sym->st_name);
++      if (name == NULL || name[0] == 0)
++        name = bfd_section_name (input_bfd, sec);
++    }
++    else
++    {
++      bfd_boolean unresolved_reloc, warned, ignored;
++
++      RELOC_FOR_GLOBAL_SYMBOL (info, input_bfd, input_section, rel,
++                   r_symndx, symtab_hdr, sym_hashes,
++                   h, sec, relocation,
++                   unresolved_reloc, warned, ignored);
++
++      name = h->root.root.string;
++    }
+ 
+-#define elf_backend_post_process_headers	elf32_stm8_post_process_headers
++    if (sec != NULL && discarded_section (sec))
++        RELOC_AGAINST_DISCARDED_SECTION (info, input_bfd, input_section,
++                     rel, 1, relend, howto, 0, contents);
++
++    if (bfd_link_relocatable (info))
++        continue;
++
++    if (!howto)
++    {
++        (*info->callbacks->einfo)("%s unkown reloc type %lu\n", __FILE__, r_type);
++        return FALSE;
++    }
++
++#if 0
++    fprintf(stderr,"reloc %s offset=%4.4lx addend=%4.4lx name=%s\n", howto->name, rel->r_offset, rel->r_addend, name); 
++#endif
++    
++    r = _bfd_final_link_relocate (howto, input_bfd, input_section,
++                contents, rel->r_offset,
++                relocation, rel->r_addend);
++
++    if (r != bfd_reloc_ok)
++    {
++      const char * msg = (const char *) NULL;
++
++      switch (r)
++      {
++        case bfd_reloc_overflow:
++          (*info->callbacks->reloc_overflow)
++        (info, (h ? &h->root : NULL), name, howto->name,
++         (bfd_vma) 0, input_bfd, input_section, rel->r_offset);
++          break;
++
++        case bfd_reloc_undefined:
++          (*info->callbacks->undefined_symbol)
++        (info, name, input_bfd, input_section, rel->r_offset, TRUE);
++          break;
++
++        case bfd_reloc_outofrange:
++          msg = _("internal error: out of range error");
++          break;
++
++        case bfd_reloc_notsupported:
++          msg = _("internal error: unsupported relocation error");
++          break;
++
++        case bfd_reloc_dangerous:
++          msg = _("internal error: dangerous relocation");
++          break;
++
++        default:
++          msg = _("internal error: unknown error");
++          break;
++      }
++
++      if (msg)
++        (*info->callbacks->warning) (info, msg, name, input_bfd,
++                     input_section, rel->r_offset);
++    }
++    
++  }
++  return TRUE;
++}
++
++#define elf_backend_post_process_headers    elf32_stm8_post_process_headers
+ #define elf_backend_modify_segment_map    elf32_stm8_modify_segment_map
+ 
+ #define bfd_elf32_bfd_reloc_type_lookup         elf32_stm8_reloc_type_lookup
+ #define bfd_elf32_bfd_reloc_name_lookup         elf32_stm8_reloc_name_lookup
+ 
+ #define ELF_ARCH                bfd_arch_stm8
+-//#define ELF_TARGET_ID         AVR_ELF_DATA
+ #define ELF_TARGET_ID           GENERIC_ELF_DATA
+ #define ELF_MACHINE_CODE        EM_STM8
+-//#define	ELF_OSABI               ELFOSABI_STANDALONE
+-//#define ELF_MACHINE_ALT1      EM_STM8_OLD
+ #define ELF_MAXPAGESIZE         1
+-//#define TARGET_LITTLE_SYM       stm8_elf32_vec
+-//#define TARGET_LITTLE_NAME    "elf32-stm8"
+ #define TARGET_BIG_SYM          stm8_elf32_vec
+ #define TARGET_BIG_NAME         "elf32-stm8"
+ 
+ #define elf_info_to_howto                    elf32_stm8_info_to_howto
+ #define elf_info_to_howto_rel                NULL
+ 
++#define elf_backend_can_gc_sections  1
++#define elf_backend_relocate_section  elf32_stm8_relocate_section
++#define bfd_elf32_bfd_link_hash_table_create  _bfd_elf_link_hash_table_create
++#define bfd_elf32_bfd_final_link bfd_elf_gc_common_final_link
++
+ #include "elf32-target.h"
++
+diff --git a/bfd/libbfd.h b/bfd/libbfd.h
+index fca8c19e..edb2df8a 100644
+--- a/bfd/libbfd.h
++++ b/bfd/libbfd.h
+@@ -3189,6 +3189,9 @@ static const char *const bfd_reloc_code_real_names[] = { "@@uninitialized@@",
+   "BFD_RELOC_WASM32_INDEX",
+   "BFD_RELOC_WASM32_PLT_SIG",
+   "BFD_RELOC_STM8_BIT_FLD",
++  "BFD_RELOC_STM8_LO8",
++  "BFD_RELOC_STM8_HI8",
++  "BFD_RELOC_STM8_HH8",
+  "@@overflow: BFD_RELOC_UNUSED@@",
+ };
+ #endif
+diff --git a/bfd/reloc.c b/bfd/reloc.c
+index c7b862aa..4ad743a2 100644
+--- a/bfd/reloc.c
++++ b/bfd/reloc.c
+@@ -7936,6 +7936,21 @@ ENUM
+ ENUMDOC
+   STM8 bit field immediate for BTJx, BCPL, BSET, BRES  instruction.
+ 
++ENUM
++  BFD_RELOC_STM8_LO8
++ENUMDOC
++  STM8 extract LSB from word.
++
++ENUM
++  BFD_RELOC_STM8_HI8
++ENUMDOC
++  STM8 extract MSB from word.
++
++ENUM
++  BFD_RELOC_STM8_HH8
++ENUMDOC
++  STM8 extract MMSB from 24-bit address.
++
+ ENDSENUM
+   BFD_RELOC_UNUSED
+ CODE_FRAGMENT
+diff --git a/gas/config/tc-stm8.c b/gas/config/tc-stm8.c
+index 38fa5072..e670cb1d 100644
+--- a/gas/config/tc-stm8.c
++++ b/gas/config/tc-stm8.c
+@@ -26,6 +26,7 @@
+ #include <string.h>
+ #include <ctype.h>
+ #include "opcode/stm8.h"
++#include <string.h>
+ 
+ typedef enum {
+ 	OP_ILLEGAL = 0,
+@@ -43,9 +44,31 @@ typedef enum {
+ 	OP_PTRW_Y,
+ 	OP_PTRE_X,
+ 	OP_PTRE_Y,
+-	OP_REGISTER
++	OP_REGISTER,
++	OP_HI8,
++	OP_LO8,
++	OP_HH8
+ } stm8_operand_t;
+ 
++typedef struct
++{
++  /* Name of the expression modifier allowed with .byte, .word, etc.  */
++  const char *name;
++
++  /* Only allowed with n bytes of data.  */
++  int nbytes;
++
++  /* Associated RELOC.  */
++  bfd_reloc_code_real_type reloc;
++
++  /* Part of the error message.  */
++  const char *error;
++
++  /* Internal operand. */
++  stm8_operand_t op;
++
++} exp_mod_data_t;
++
+ static struct hash_control *stm8_hash;
+ 
+ const char comment_chars[] = ";";
+@@ -133,7 +156,7 @@ md_begin (void)
+ {
+   const struct stm8_opcodes_s *opcode;
+   stm8_hash = hash_new ();
+-  
++
+   /* Insert unique names into hash table.  This hash table then provides a
+   quick index to the first opcode with a particular name in the opcode
+   table.  */
+@@ -198,6 +221,15 @@ md_begin (void)
+ 
+ }
+ 
++const exp_mod_data_t exp_mod_data[] =
++{
++  /* Default, must be first.  */
++  { "", 0, BFD_RELOC_16, "", OP_ILLEGAL },
++  { "lo8",  1, BFD_RELOC_STM8_LO8,  "`lo8' ", OP_LO8  },
++  { "hi8",  1, BFD_RELOC_STM8_HI8,  "`hi8' ", OP_HI8  },
++  { "hh8",  1, BFD_RELOC_STM8_HH8,  "`hi8' ", OP_HH8  },
++};
++
+ static inline char *
+ skip_space (char *s)
+ {
+@@ -239,8 +271,6 @@ md_operand (expressionS * exp __attribute__((unused)))
+ 
+ void print_fixup (fixS *);
+ 
+-
+-
+ /* Attempt to simplify or eliminate a fixup. To indicate that a fixup
+    has been eliminated, set fix->fx_done. If fix->fx_addsy is non-NULL,
+    we will have to generate a reloc entry.  */
+@@ -335,6 +365,18 @@ md_apply_fix (fixS *fixP, valueT *valP, segT segment ATTRIBUTE_UNUSED)
+         fixP->fx_done = 1;
+         break;
+ 
++	case BFD_RELOC_STM8_LO8:
++		*buf = 0xff & val;
++		break;
++
++	case BFD_RELOC_STM8_HI8:
++		*buf = (0xff00 & val) >> 8;
++		break;
++
++	case BFD_RELOC_STM8_HH8:
++		*buf = (0xff0000 & val) >> 16;
++		break;
++
+     default:
+       printf(_("md_apply_fix: unknown r_type 0x%x\n"), fixP->fx_r_type);
+       abort ();
+@@ -526,13 +568,13 @@ int read_arg_ptr(char *str, expressionS *exps)
+ 	char *s;
+ 	char *p;
+ 	char c;
+-	
++
+ 	if ((str[0]=='[') && (strstr(str,"]")))
+ 	{
+ 		s = str;
+ 		s++;
+ 		input_line_pointer=s;
+-		
++
+ 		/* first eat up .w and .e */
+ 		if ((p = strstr(s,".w]")))
+ 		{
+@@ -545,11 +587,11 @@ int read_arg_ptr(char *str, expressionS *exps)
+ 			c = *p;
+ 			*p = 0;
+ 		}
+-		
++
+ 		expression(exps);
+ 		if (stm8_debug)
+ 			print_expr(exps);
+-		
++
+ 		/* restore c */
+ 		if (p)
+ 			*p = c;
+@@ -615,7 +657,7 @@ int read_arg(char *str, expressionS *exps)
+ 			print_expr(exps);
+ 		return 1;
+ 	}
+-	
++
+ 	char strx[256];
+ 	strncpy(strx,str,sizeof(strx));
+ 	toupperstr(strx);
+@@ -719,6 +761,50 @@ int read_arg(char *str, expressionS *exps)
+ 		exps->X_md=OP_OFF_SP;
+ 		return 1;
+ 	}
++	else
++	{
++		/* The first entry of exp_mod_data[] contains an entry if no
++		   expression modifier is present.  Skip it.  */
++		size_t i;
++
++		for (i = 1; i < ARRAY_SIZE (exp_mod_data); i++)
++		{
++			const exp_mod_data_t *const pexp = &exp_mod_data[i];
++			const size_t len = strlen (pexp->name);
++			const int result = strncasecmp (str, pexp->name, len);
++
++			if (!result)
++			{
++				str += len;
++				while (isspace(*str))
++					str++;
++
++				if (*str == '(')
++				{
++					input_line_pointer = ++str;
++
++					expression(exps);
++
++					if (*input_line_pointer == ')')
++					{
++						input_line_pointer++;
++
++						exps->X_md = pexp->op;
++						return 1;
++					}
++					else
++					{
++						as_bad (_("`)' required"));
++						return 0;
++					}
++				}
++
++				input_line_pointer = str;
++
++				break;
++			}
++		}
++	}
+ 
+ 	char *p;
+ 	char c;
+@@ -777,7 +863,7 @@ void stm8_bfd_out(struct stm8_opcodes_s op, expressionS exp[], int count, char *
+ 	int i;
+ 	int arg = 0;
+ 	int dir = 1;
+-	
++
+ 	/* if count is negative the arguments are reversed */
+ 	if (count < 0)
+ 	{
+@@ -833,6 +919,21 @@ void stm8_bfd_out(struct stm8_opcodes_s op, expressionS exp[], int count, char *
+ 			case ST8_BIT_0:
+ 				fix_new_exp(frag_now, where-3, 1, &exp[arg], FALSE, BFD_RELOC_STM8_BIT_FLD);
+ 				break;
++			case ST8_HI8:
++				fix_new_exp(frag_now, where, 1, &exp[arg], FALSE, BFD_RELOC_STM8_HI8);
++				bfd_put_bits(0xaaaaaaaa, frag, 8, true);
++				frag+=1;
++				break;
++			case ST8_LO8:
++				fix_new_exp(frag_now, where, 1, &exp[arg], FALSE, BFD_RELOC_STM8_LO8);
++				bfd_put_bits(0xaaaaaaaa, frag, 8, true);
++				frag+=1;
++				break;
++			case ST8_HH8:
++				fix_new_exp(frag_now, where, 1, &exp[arg], FALSE, BFD_RELOC_STM8_HH8);
++				bfd_put_bits(0xaaaaaaaa, frag, 8, true);
++				frag+=1;
++				break;
+ 			default:
+ 				break;
+ 			}
+@@ -945,6 +1046,18 @@ int cmpspec(stm8_addr_mode_t addr_mode[], expressionS exps[], int count)
+ 			if (addr_mode[i] == ST8_SHORTMEM)
+ 				continue;
+ 			break;
++		case OP_LO8:
++			if (addr_mode[i] == ST8_LO8)
++				continue;
++			break;
++		case OP_HI8:
++			if (addr_mode[i] == ST8_HI8)
++				continue;
++			break;
++		case OP_HH8:
++			if (addr_mode[i] == ST8_HH8)
++				continue;
++			break;
+ 		case OP_ILLEGAL:
+ 			as_fatal(_("BUG: OP_ILLEGAL"));
+ 			return 1;
+@@ -989,22 +1102,22 @@ md_assemble (char *str)
+ 	for(i = 0; opcode[i].name != NULL; i++)
+ 	{
+ 		if (!strcmp(op, opcode[i].name))
+-		if(!cmpspec(opcode[i].constraints, exps, count))
+-		{
+-			int insn_size = stm8_compute_insn_size(opcode[i]);
+-			char *frag = frag_more(insn_size);
+-			int opcode_length = stm8_opcode_size(opcode[i].bin_opcode);
+-			bfd_put_bits(opcode[i].bin_opcode, frag, opcode_length * 8, true);
+-			frag += opcode_length;
+-			
+-			/* mov insn operands are reversed */
+-			if ((opcode[i].bin_opcode == 0x35) || (opcode[i].bin_opcode == 0x45) || (opcode[i].bin_opcode == 0x55))
++			if(!cmpspec(opcode[i].constraints, exps, count))
+ 			{
+-				count = -count;
++				int insn_size = stm8_compute_insn_size(opcode[i]);
++				char *frag = frag_more(insn_size);
++				int opcode_length = stm8_opcode_size(opcode[i].bin_opcode);
++				bfd_put_bits(opcode[i].bin_opcode, frag, opcode_length * 8, true);
++				frag += opcode_length;
++
++				/* mov insn operands are reversed */
++				if ((opcode[i].bin_opcode == 0x35) || (opcode[i].bin_opcode == 0x45) || (opcode[i].bin_opcode == 0x55))
++				{
++					count = -count;
++				}
++				stm8_bfd_out(opcode[i], exps, count, frag);
++				break;
+ 			}
+-			stm8_bfd_out(opcode[i], exps, count, frag);
+-			break;
+-		}
+ 	}
+ 	if(!opcode[i].name)
+ 		as_bad("Invalid instruction: %s", str_orig);
+@@ -1028,7 +1141,7 @@ md_pcrel_from_section (fixS *fixp, segT sec)
+ 			&& (!S_IS_DEFINED (fixp->fx_addsy)
+ 					|| (S_GET_SEGMENT (fixp->fx_addsy) != sec)))
+ 		return 0;
+-	
++
+ 	return fixp->fx_size + fixp->fx_where + fixp->fx_frag->fr_address;
+ 	//return fixp->fx_frag->fr_address+fixp->fx_frag->fr_fix;
+ 	return fixp->fx_frag->fr_address + fixp->fx_where;
+diff --git a/gas/config/tc-stm8.h b/gas/config/tc-stm8.h
+index 066e72ea..45c94d69 100644
+--- a/gas/config/tc-stm8.h
++++ b/gas/config/tc-stm8.h
+@@ -40,7 +40,7 @@
+ 
+ /* You should define this macro to be non-zero if the target is big
+    endian, and zero if the target is little endian.  */
+-#define TARGET_BYTES_BIG_ENDIAN 0
++#define TARGET_BYTES_BIG_ENDIAN 1
+ 
+ /* If you define this macro, GAS will warn about the use of
+    nonstandard escape sequences in a string.  */
+diff --git a/include/elf/stm8.h b/include/elf/stm8.h
+index 4f703354..3468a575 100644
+--- a/include/elf/stm8.h
++++ b/include/elf/stm8.h
+@@ -33,6 +33,9 @@ START_RELOC_NUMBERS (elf_avr_reloc_type)
+      RELOC_NUMBER (R_STM8_24,          3)
+      RELOC_NUMBER (R_STM8_32,			4)
+      RELOC_NUMBER (R_STM8_8_PCREL,    5)
++     RELOC_NUMBER (R_STM8_HI8, 6)
++     RELOC_NUMBER (R_STM8_LO8, 7)
++     RELOC_NUMBER (R_STM8_HH8, 8)
+ END_RELOC_NUMBERS (R_STM8_max)
+ 
+ #endif /* _ELF_STM_H */
+diff --git a/include/opcode/stm8.h b/include/opcode/stm8.h
+index d131527d..18eb88a7 100644
+--- a/include/opcode/stm8.h
++++ b/include/opcode/stm8.h
+@@ -63,7 +63,10 @@ typedef enum {
+ 	ST8_LONGPTRW_Y,
+ 	ST8_LONGPTRE,
+ 	ST8_LONGPTRE_X,
+-	ST8_LONGPTRE_Y
++	ST8_LONGPTRE_Y,
++	ST8_HI8,
++	ST8_LO8,
++	ST8_HH8
+ } stm8_addr_mode_t;
+ 
+ struct stm8_opcodes_s
+diff --git a/opcodes/stm8-dis.c b/opcodes/stm8-dis.c
+index 2eee6306..906b8370 100644
+--- a/opcodes/stm8-dis.c
++++ b/opcodes/stm8-dis.c
+@@ -332,6 +332,33 @@ int stm8_operands(char *s, unsigned char buf[], stm8_addr_mode_t arg)
+ 			sprintf(s,"(0x%6.6x,Y)",val);
+ 		return 3;
+ 		break;
++	case ST8_HI8:
++		val = buf[0];
++		sym = find_symbol(val);
++		if (sym)
++			sprintf(s,"hi8(#%s)",sym);
++		else
++			sprintf(s,"hi8(#0x%2.2x)",val);
++		return 2;
++		break;
++	case ST8_LO8:
++		val = buf[0];
++		sym = find_symbol(val);
++		if (sym)
++			sprintf(s,"lo8(#%s)",sym);
++		else
++			sprintf(s,"lo8(#0x%2.2x)",val);
++		return 2;
++		break;
++	case ST8_HH8:
++		val = buf[0];
++		sym = find_symbol(val);
++		if (sym)
++			sprintf(s,"hh8(#%s)",sym);
++		else
++			sprintf(s,"hh8(#0x%4.4x)",val);
++		return 3;
++		break;
+ 	case ST8_END:
+ 		break;
+ 	}
+@@ -389,8 +416,8 @@ int stm8_dis(bfd_vma addr, unsigned int op)
+ 					}
+ 				}
+ 			}
+-			
+-			
++
++
+ //			c = ' ';
+ //			for (j=0; j<5; j++, operand += dir)
+ //			{
+diff --git a/opcodes/stm8-opc.c b/opcodes/stm8-opc.c
+index 9516d859..d16e7b60 100644
+--- a/opcodes/stm8-opc.c
++++ b/opcodes/stm8-opc.c
+@@ -489,6 +489,9 @@ const struct stm8_opcodes_s stm8_opcodes[] =
+ {"push", {ST8_REG_CC}, 0x8A},
+ {"push", {ST8_BYTE}, 0x4B},
+ {"push", {ST8_LONGMEM}, 0x3B},
++{"push", {ST8_HI8}, 0x4B},
++{"push", {ST8_LO8}, 0x4B},
++{"push", {ST8_HH8}, 0x4B},
+ //pushw
+ {"pushw", {ST8_REG_X}, 0x89},
+ {"pushw", {ST8_REG_Y}, 0x9089},
+@@ -759,6 +762,8 @@ int stm8_compute_insn_size(struct stm8_opcodes_s opcode) {
+ 		case ST8_SHORTOFF_X:
+ 		case ST8_SHORTOFF_Y:
+ 		case ST8_SHORTOFF_SP:
++		case ST8_LO8:
++		case ST8_HI8:
+ 			ret++;
+ 			break;
+ 		case ST8_LONGPTRE_Y:
+@@ -776,6 +781,7 @@ int stm8_compute_insn_size(struct stm8_opcodes_s opcode) {
+ 		case ST8_EXTMEM:
+ 		case ST8_EXTOFF_X:
+ 		case ST8_EXTOFF_Y:
++		case ST8_HH8:
+ 			ret += 3;
+ 			break;
+ 		case ST8_END:
+-- 
+2.17.1

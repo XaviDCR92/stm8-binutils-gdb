@@ -1,7 +1,7 @@
 From 85f95b1d46d4ab7bff529f9f0de5cc3263a205bf Mon Sep 17 00:00:00 2001
 From: =?UTF-8?q?=C3=85ke=20Rehnman?= <ake_rehnman_at_gmail_com>
 Date: Sun, 23 Apr 2017 21:26:53 +0200
-Subject: [PATCH 4/6] Added --debug option to gas to enable debugging printout
+Subject: [PATCH 4/8] Added --debug option to gas to enable debugging printout
 MIME-Version: 1.0
 Content-Type: text/plain; charset=UTF-8
 Content-Transfer-Encoding: 8bit
