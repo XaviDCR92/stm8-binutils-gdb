@@ -1,0 +1,3 @@
+*.tar.xz
+binutils-2.30/**
+out/**
