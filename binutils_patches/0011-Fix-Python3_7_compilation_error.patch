@@ -1,0 +1,29 @@
+--- binutils-2.30/gdb/python/python.c	2018-01-31 03:58:50.000000000 +0100
++++ python.c	2023-06-22 11:22:19.692643165 +0200
+@@ -37,6 +37,15 @@
+ #include "location.h"
+ #include "ser-event.h"
+ 
++
++#ifdef IS_PY3K
++PyMODINIT_FUNC
++PyInit__gdb (void)
++{
++  return PyModule_Create (&python_GdbModuleDef);
++}
++#endif
++
+ /* Declared constants and enum for python stack printing.  */
+ static const char python_excp_none[] = "none";
+ static const char python_excp_full[] = "full";
+@@ -1705,9 +1714,7 @@
+   PyEval_InitThreads ();
+ 
+ #ifdef IS_PY3K
+-  gdb_module = PyModule_Create (&python_GdbModuleDef);
+-  /* Add _gdb module to the list of known built-in modules.  */
+-  _PyImport_FixupBuiltin (gdb_module, "_gdb");
++  gdb_module = PyImport_ImportModule("_gdb");
+ #else
+   gdb_module = Py_InitModule ("_gdb", python_GdbMethods);
+ #endif
